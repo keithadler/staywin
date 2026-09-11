@@ -410,11 +410,21 @@ public static class Cli
             return standing.Loud > 0 ? 1 : 0;
         }
 
-        foreach (var group in standing.Junk.GroupBy(g => g.Guard.Group))
+        var here = standing.Junk.Where(g => engine.Applies(g.Guard, standing.Windows)).ToList();
+        foreach (var group in here.GroupBy(g => g.Guard.Group))
         {
             o.WriteLine(group.Key.ToUpperInvariant());
             foreach (var status in group)
                 o.WriteLine($"  {(status.NeedsDoing ? "ON  " : "off ")} {status.Guard.Id,-24} {status.Guard.Title}");
+            o.WriteLine();
+        }
+
+        int elevenOnly = standing.Junk.Count - here.Count;
+        if (elevenOnly > 0)
+        {
+            o.WriteLine($"{elevenOnly} more switches in this list are Windows 11 features Windows 10 never had.");
+            o.WriteLine("They are left out rather than written, because a value that does nothing would leave you");
+            o.WriteLine("believing you had turned something off.");
             o.WriteLine();
         }
         int junkApps = standing.Apps.Count(a => a.Suggested);

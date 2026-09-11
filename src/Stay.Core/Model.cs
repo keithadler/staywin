@@ -188,7 +188,8 @@ public sealed record Standing(
 {
     public int Open => Guards.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
     public int Closed => Guards.Count(g => !g.NeedsDoing);
-    public int Loud => Junk.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
+    /// <summary>Counted over what actually applies here, so the number matches what is on the screen.</summary>
+    public int Loud => Junk.Count(g => g.NeedsDoing && g.Guard.DefaultOn && g.Guard.OnlyIf != "win11");
 
     /// <summary>What is wrong with how this PC is being looked after, worst first.</summary>
     public IReadOnlyList<Wrong> Wrong => Watching.WhatIsWrong(Watch, Esu, Today, Windows.IsWindows10);

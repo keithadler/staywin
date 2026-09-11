@@ -75,11 +75,17 @@ It also says the thing a tuning app is not supposed to say. If the PC has a spin
 problem, an SSD would do more than everything the app can do put together, and the app says so at the top of the
 page before offering you a single switch.
 
-**Turn off the junk.** The 34 advertising, AI, telemetry and noise switches from
+**Turn off the junk.** The advertising, AI, telemetry and noise switches from
 [Quiet for Windows](https://github.com/keithadler/quietwin), brought here whole — suggestions in Start, promotions
 in Settings, Copilot, Recall, Click to Do, diagnostic data, activity history, the widgets, Game Bar recording,
 Edge running when it is closed. Somebody on an old PC should not have to find a second app to turn off a Start
 menu advert.
+
+Quiet was written for Windows 11, and 8 of its 34 switches are for features Windows 10 never had — Recall, Click
+to Do, the AI in Paint and Notepad. Those are left out rather than written, because a value that does nothing
+would leave you believing you had turned something off; the window says how many and why. Two more were the
+opposite problem and are fixed rather than hidden: Windows 10 really does put Bing in the search box and really
+does have the news panel, under different keys than Windows 11 uses, and Stay now writes both.
 
 It also lists the bundled apps — Solitaire, Clipchamp, the Bing apps, Copilot — and will remove the ones the list
 calls junk. That is the **only** thing the app does that a receipt cannot undo, it says so before it does it, and

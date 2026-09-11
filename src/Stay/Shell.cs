@@ -236,7 +236,7 @@ public sealed class Shell : INotifyPropertyChanged
 
         var loud = _engine.SuggestedJunk(_standing).Select(g => g.Id).ToHashSet();
         Junk.Clear();
-        foreach (var status in _standing.Junk)
+        foreach (var status in _standing.Junk.Where(g => _engine.Applies(g.Guard, _standing.Windows)))
             Junk.Add(new GuardRow(status, status.Guard.Edits, loud.Contains(status.Guard.Id)));
 
         _pace = _engine.Pace();
@@ -272,7 +272,8 @@ public sealed class Shell : INotifyPropertyChanged
                                      nameof(BootLine), nameof(DiskLine), nameof(Truth), nameof(StartupSummary),
                                      nameof(SpaceSummary), nameof(HasSpace), nameof(JunkSummary),
                                      nameof(HasWrong), nameof(WrongSummary), nameof(LastUpdateLine),
-                                     nameof(AppsSummary), nameof(HasApps) })
+                                     nameof(AppsSummary), nameof(HasApps),
+                                     nameof(ElevenOnlyNote), nameof(HasElevenOnly) })
             PropertyChanged?.Invoke(this, new(name));
     }
 
@@ -375,6 +376,24 @@ public sealed class Shell : INotifyPropertyChanged
     public bool HasSpace => _pace.Space.Count > 0;
     public string SpaceSummary => $"{_pace.Reclaimable / 1024.0 / 1024 / 1024:0.#} GB is being held that could come back. "
         + "This app does not delete files: deleting cannot be undone by a receipt, so it tells you where it is instead.";
+
+    /// <summary>
+    /// Said out loud rather than quietly left out: the list this came from covers Windows 11 too, and a person
+    /// comparing the two apps should know why this one is shorter.
+    /// </summary>
+    public string ElevenOnlyNote
+    {
+        get
+        {
+            int hidden = _standing.Junk.Count - Junk.Count;
+            return hidden == 0 ? "" :
+                $"{hidden} more switches in this list are Windows 11 features — Recall, Click to Do, the AI in "
+                + "Paint and Notepad — which Windows 10 never had. They are not shown, because writing a value "
+                + "that does nothing would leave you believing you had turned something off.";
+        }
+    }
+
+    public bool HasElevenOnly => ElevenOnlyNote.Length > 0;
 
     public string JunkSummary => _standing.Loud == 0
         ? "Every advertising, AI and telemetry switch this app knows about is already off."

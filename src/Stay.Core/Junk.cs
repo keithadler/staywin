@@ -65,7 +65,7 @@ public static class Junk
             "The Home page is gone until you switch this back. Every setting on it lives elsewhere in Settings too.",
             new[] {
                 MS(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "SettingsPageVisibility", "hide:home"),
-            }, DefaultOn: true),
+            }, DefaultOn: true, OnlyIf: "win11"),
 
         new("ads.tips", Ads, "Tips, nags and welcome screens",
             "Windows shows tips, \"finish setting up your device\" prompts, a welcome page after updates, backup reminders and \"suggested\" notifications.",
@@ -116,12 +116,16 @@ public static class Junk
                 U(@"Software\Microsoft\Windows\CurrentVersion\Privacy", "TailoredExperiencesWithDiagnosticDataEnabled", 0),
             }, DefaultOn: true),
 
+        // Windows 10 and Windows 11 both put web results in the search box, and each uses its own keys for it.
+        // Writing only the Windows 11 ones looked like it worked and did nothing.
         new("ads.bing", Ads, "Bing in the Start search box",
             "Typing in Start's search box sends what you type to Bing and shows web results, plus a daily picture and \"search highlights\".",
             "Keeps search on this PC and turns the highlights off.",
             "Searching Start finds only files, apps and settings on this PC. Web search stays in the browser.",
             new[] {
                 U(@"Software\Policies\Microsoft\Windows\Explorer", "DisableSearchBoxSuggestions", 1),
+                U(@"Software\Microsoft\Windows\CurrentVersion\Search", "BingSearchEnabled", 0),
+                U(@"Software\Microsoft\Windows\CurrentVersion\Search", "CortanaConsent", 0),
                 U(@"Software\Microsoft\Windows\CurrentVersion\SearchSettings", "IsDynamicSearchBoxEnabled", 0),
             }, DefaultOn: true, NeedsSignOut: true),
 
@@ -162,7 +166,7 @@ public static class Junk
                 M(WindowsAI, "DisableAIDataAnalysis", 1),
                 M(WindowsAI, "AllowRecallEnablement", 0),
                 M(WindowsAI, "TurnOffSavingSnapshots", 1),
-            }, DefaultOn: true),
+            }, DefaultOn: true, OnlyIf: "win11"),
 
         new("ai.clicktodo", AI, "Click to Do",
             "Click to Do reads whatever is on screen when you hold the Windows key and click, and offers actions on it.",
@@ -171,7 +175,7 @@ public static class Junk
             new[] {
                 new RegEdit(Hive.CurrentUser, WindowsAIUser, "DisableClickToDo", RegValue.DWord(1)),
                 M(WindowsAI, "DisableClickToDo", 1),
-            }, DefaultOn: true),
+            }, DefaultOn: true, OnlyIf: "win11"),
 
         new("ai.paint", AI, "AI in Paint",
             "Paint has Cocreator, Image Creator, generative fill and erase, and background removal, some of which send your picture to Microsoft.",
@@ -183,13 +187,13 @@ public static class Junk
                 M(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableImageCreator", 1),
                 M(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableGenerativeErase", 1),
                 M(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Paint", "DisableRemoveBackground", 1),
-            }, DefaultOn: true),
+            }, DefaultOn: true, OnlyIf: "win11"),
 
         new("ai.notepad", AI, "AI in Notepad",
             "Notepad has Rewrite and Summarize, which send the text to Microsoft.",
             "Turns them off by policy.",
             "Notepad edits text and nothing else, which is what it was for.",
-            new[] { M(@"SOFTWARE\Policies\WindowsNotepad", "DisableAIFeatures", 1) }, DefaultOn: true),
+            new[] { M(@"SOFTWARE\Policies\WindowsNotepad", "DisableAIFeatures", 1) }, DefaultOn: true, OnlyIf: "win11"),
 
         new("ai.edge", AI, "AI in Edge",
             "Edge has a Copilot sidebar that can read the page you are on, summarise your history, and write in text boxes for you.",
@@ -209,7 +213,7 @@ public static class Junk
             "The Windows AI fabric service starts at boot whether or not anything uses it.",
             "Sets the service to start only when something asks for it.",
             "None. It still starts when an app needs it. Takes effect after a restart.",
-            new[] { M(@"SYSTEM\CurrentControlSet\Services\WSAIFabricSvc", "Start", 3) }, DefaultOn: true, NeedsRestart: true),
+            new[] { M(@"SYSTEM\CurrentControlSet\Services\WSAIFabricSvc", "Start", 3) }, DefaultOn: true, NeedsRestart: true, OnlyIf: "win11"),
 
         // ---- Telemetry and tracking ----
         new("tel.diagnostics", Telemetry, "Diagnostic data",
@@ -275,11 +279,18 @@ public static class Junk
             new[] { M(@"SOFTWARE\Policies\Microsoft\SQMClient\Windows", "CEIPEnable", 0) }, DefaultOn: true),
 
         // ---- Windows noise ----
+        // Windows 11 calls it Widgets and Windows 10 calls it News and interests. They are the same panel and
+        // the same nuisance, and they are switched off by different keys.
         new("noise.widgets", Noise, "Widgets and the weather button",
-            "The weather in the taskbar corner opens a board of news, ads and widgets.",
+            "The weather in the taskbar corner opens a board of news, ads and widgets. Windows 11 calls it Widgets and Windows 10 calls it News and interests; it is the same panel.",
             "Turns the board off by policy, which takes the button with it. Windows no longer lets anyone, administrators included, write the taskbar's own widgets switch, so the policy is the way.",
-            "No weather in the taskbar. The Widgets packages themselves are under Apps.",
-            new[] { M(@"SOFTWARE\Policies\Microsoft\Dsh", "AllowNewsAndInterests", 0) }, DefaultOn: true, NeedsSignOut: true),
+            "No weather in the taskbar, under either of its names.",
+            new[]
+            {
+                M(@"SOFTWARE\Policies\Microsoft\Dsh", "AllowNewsAndInterests", 0),
+                M(@"SOFTWARE\Policies\Microsoft\Windows\Windows Feeds", "EnableFeeds", 0),
+            },
+            DefaultOn: true, NeedsSignOut: true),
 
         new("noise.chat", Noise, "Chat and Meet Now",
             "Older Windows 11 puts a Teams chat button on the taskbar; Windows 10 has Meet Now. Recent builds have neither, and this keeps it that way.",
@@ -313,7 +324,7 @@ public static class Junk
             new[] {
                 U(@"Software\Policies\Microsoft\Windows\CloudContent", "DisableSpotlightCollectionOnDesktop", 1),
                 U(@"Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel", "{2cc5ca98-6485-489a-920e-b3e88a6ccce3}", 1),
-            }, DefaultOn: false),
+            }, DefaultOn: false, OnlyIf: "win11"),
 
         new("noise.onedrive", Noise, "OneDrive in File Explorer's sidebar",
             "File Explorer pins OneDrive to the sidebar whether or not you use it.",
@@ -334,7 +345,7 @@ public static class Junk
             "Copy a phone number or a date and Windows pops up a bar offering to call it or make an event.",
             "Turns the bar off.",
             "None.",
-            new[] { U(@"Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard", "Disabled", 1) }, DefaultOn: true),
+            new[] { U(@"Software\Microsoft\Windows\CurrentVersion\SmartActionPlatform\SmartClipboard", "Disabled", 1) }, DefaultOn: true, OnlyIf: "win11"),
 
         new("noise.onedrive_start", Noise, "OneDrive starting at sign-in",
             "OneDrive starts with Windows and sits in the tray whether or not you use it.",

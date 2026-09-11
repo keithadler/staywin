@@ -89,6 +89,40 @@ public static class WatchSuite
         s.Equal("on Windows 11 it finds nothing to say", 0,
             On(new FakeProtection { Installed = new DateOnly(2025, 1, 1), Waiting = true }, eleven).Scan().Wrong.Count);
 
+        // ---- a switch for a feature this Windows never had is not a switch ----
+        var ten = On(new FakeProtection(), Enrolled());
+        var here = ten.Scan();
+        var offered = here.Junk.Where(g => ten.Applies(g.Guard, here.Windows)).ToList();
+        s.Equal("eight of the junk switches are Windows 11 features", 8, here.Junk.Count - offered.Count);
+        s.Check("and none of them is offered on Windows 10",
+            offered.All(g => g.Guard.Id is not ("ai.recall" or "ai.clicktodo" or "ai.paint" or "ai.notepad"
+                                               or "ai.service" or "noise.spotlight" or "noise.suggested_actions"
+                                               or "ads.settings_home")),
+            "writing a value that does nothing leaves somebody believing they turned something off");
+        s.Check("the ones that do apply still are", offered.Any(g => g.Guard.Id == "tel.diagnostics"));
+
+        var elevenPc = new FakeMachine { Build = new("Microsoft Windows 11 Pro", "Professional", "24H2", 10, 26100, 1742, "arm64") };
+        var onEleven = On(new FakeProtection(), elevenPc);
+        var there = onEleven.Scan();
+        s.Equal("on Windows 11 the app offers nothing whatever, which is its whole stance", 0,
+            there.Junk.Count(g => onEleven.Applies(g.Guard, there.Windows)));
+
+        // Two of them were written for Windows 11 when Windows 10 does the same thing under another name. Those
+        // are not hidden: they are fixed, because the feature really is there.
+        var bing = Core.Junk.Find("ads.bing")!;
+        s.Check("the Bing switch reaches Windows 10's own search keys",
+            bing.Edits.Any(e => e.Name == "BingSearchEnabled") && bing.Edits.Any(e => e.Name == "CortanaConsent"));
+        s.Check("and is still offered here", ten.Applies(bing, here.Windows));
+
+        var widgets = Core.Junk.Find("noise.widgets")!;
+        s.Check("the widgets switch reaches Windows 10's News and interests",
+            widgets.Edits.Any(e => e.Name == "EnableFeeds"));
+        s.Check("as well as Windows 11's Widgets",
+            widgets.Edits.Any(e => e.Name == "AllowNewsAndInterests"));
+
+        s.Check("every junk switch either works on Windows 10 or is marked as not",
+            Core.Junk.Items.All(g => g.OnlyIf is null or "win11" or "win10"));
+
         // ---- a PC that has never recorded an update is not accused of anything ----
         s.Check("no record of an update is not treated as a fault",
             On(new FakeProtection { Installed = null }, Enrolled()).Scan().Wrong.Count == 0);

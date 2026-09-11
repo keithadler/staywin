@@ -353,6 +353,9 @@
                                    Text="The advertising, the AI hooks, the telemetry and the noise. Every one is a registry value with a receipt: nothing is removed and nothing here cannot be put back."/>
                         <ItemsControl ItemsSource="{Binding Junk}" ItemTemplate="{StaticResource GuardTemplate}"/>
 
+                        <TextBlock Text="{Binding ElevenOnlyNote}" Style="{StaticResource Small}" TextWrapping="Wrap"
+                                   Margin="0,12,0,0" Visibility="{Binding HasElevenOnly, Converter={StaticResource Vis}}"/>
+
                         <StackPanel Visibility="{Binding HasApps, Converter={StaticResource Vis}}">
                             <TextBlock Text="Apps you did not ask for" Style="{StaticResource H1}" FontSize="21" Margin="0,22,0,0"/>
                             <TextBlock Text="{Binding AppsSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,12"/>

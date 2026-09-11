@@ -239,12 +239,23 @@ public sealed class Engine
     }
 
     /// <summary>Whether a guard applies to this PC at all. A printer check is not advice for a PC with a printer.</summary>
+    /// <summary>
+    /// Whether a switch is worth offering on this PC.
+    ///
+    /// The advertising and telemetry list came from an app written for Windows 11, and a third of it is for
+    /// features Windows 10 never had. Offering somebody a switch for Recall on a PC that cannot run Recall is
+    /// not harmless: it writes a value that does nothing and leaves them believing they turned something off.
+    /// </summary>
     public bool Applies(Guard guard, WindowsBuild windows)
     {
         if (windows.IsWindows11) return false;
-        if (guard.Id.Contains('.')) return true;   // the advertising, AI and telemetry list applies everywhere
         return guard.OnlyIf switch
         {
+            // This app does nothing at all on Windows 11 — see the line above — so a switch for a Windows 11
+            // feature is never offered anywhere. The marker still earns its place: it is what lets the window
+            // say how many of the list it left out, and why.
+            "win11" => false,
+            "win10" => windows.IsWindows10,
             "office" => _machine.Installed("Microsoft 365") || _machine.Installed("Office"),
             "defender" => !_machine.Installed("third-party antivirus"),
             "noprinter" => !_machine.HasPrinter(),

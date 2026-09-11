@@ -28,7 +28,11 @@ grep -q "the five changes that actually help" README.md; say $? "and the README 
 
 junk=$(grep -cE '^        new\("' src/Stay.Core/Junk.cs)
 [ "$junk" = 34 ]; say $? "the junk list holds 34 switches (found $junk)"
-grep -q "34 advertising" README.md; say $? "and the README says 34"
+eleven=$(grep -c 'OnlyIf: "win11"' src/Stay.Core/Junk.cs)
+[ "$eleven" = 8 ]; say $? "8 of them are Windows 11 features (found $eleven)"
+grep -q "8 of its 34 switches" README.md; say $? "and the README says 8 of 34"
+grep -q "BingSearchEnabled" src/Stay.Core/Junk.cs && grep -q "EnableFeeds" src/Stay.Core/Junk.cs
+say $? "the two with Windows 10 equivalents write those too"
 
 grep -q "is it actually working" README.md
 say $? "the README explains the difference between entitled and receiving"
