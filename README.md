@@ -12,6 +12,8 @@ is fixing any more. Every change it makes is written to a receipt first, and one
 One exe. No installer, no account, no cloud. Right-click it and choose **Run as administrator** — reading works
 without, but changing anything under `HKEY_LOCAL_MACHINE` does not.
 
+![Stay for Windows 10, showing a PC that is enrolled in Extended Security Updates and yet has not had an update in seven months](docs/screenshots/stand.png)
+
 It is not signed, because a certificate costs money this does not make. SmartScreen will say so. The SHA-256 of
 every release is published with it and the exes are built by GitHub from the commit you can read.
 
@@ -60,9 +62,13 @@ somebody needs to see, and no part of Windows will say it.
 **Still being patched.** Every piece of this PC that still gets security updates, the day each one stops, and
 where that date came from, so you can check it rather than trust it.
 
+![The dates each piece of the PC stops getting security updates, with where each date comes from](docs/screenshots/patched.png)
+
 **Windows 11.** Whether this PC could take it, and *which check fails*. Three of the four usual failures are
 settings somebody can change in ten minutes — a TPM switched off in firmware, Secure Boot off, a disk still
 partitioned the old way — and one means a different PC. Knowing which is the whole question.
+
+![The Windows 11 checks, with exactly which one fails and what it would take](docs/screenshots/eleven.png)
 
 **What to shut.** Fifteen things worth closing on a PC that will not be patched again: SMBv1, the two shouted
 name lookups that hand over password hashes, Remote Desktop, WebDAV, the print spooler on a PC with no printer,
@@ -71,12 +77,16 @@ Defender's attack-surface rules, SmartScreen set to block rather than warn. Each
 shutting it does, and what you lose — and every change is written to a receipt first, holding what each value was
 before, so one button puts it all back.
 
+![Fifteen things worth shutting, each with what it is, what shutting it does and what it costs you](docs/screenshots/shut.png)
+
 **Make it faster.** Windows times its own start and writes it down, and almost nobody knows the log is there.
 Stay reads it: *this PC last took 94 seconds to start*, and *OneDrive cost 4.2 seconds of it*. Real measurements,
 not guesses. Then the five changes that actually help an old machine — animations off, transparency off, the
 search index on a spinning disk, SysMain on a solid one, Storage Sense so the disk stops filling — and a list of
 what is eating the disk. It will not delete files: deleting cannot be undone by a receipt, so it tells you where
 the space is and opens Windows' own cleanup.
+
+![How long this PC took to start, and what each startup program cost, from Windows own log](docs/screenshots/speed.png)
 
 It also says the thing a tuning app is not supposed to say. If the PC has a spinning hard disk, that is the
 problem, an SSD would do more than everything the app can do put together, and the app says so at the top of the
@@ -87,6 +97,8 @@ page before offering you a single switch.
 in Settings, Copilot, Recall, Click to Do, diagnostic data, activity history, the widgets, Game Bar recording,
 Edge running when it is closed. Somebody on an old PC should not have to find a second app to turn off a Start
 menu advert.
+
+![The advertising, AI hooks and telemetry still switched on, each with a receipt that undoes it](docs/screenshots/junk.png)
 
 Quiet was written for Windows 11, and 8 of its 34 switches are for features Windows 10 never had — Recall, Click
 to Do, the AI in Paint and Notepad. Those are left out rather than written, because a value that does nothing
@@ -111,6 +123,8 @@ has said there is no end date for Firefox. Where nobody has promised anything, t
 inventing a date.
 
 **Receipts.** Every change this app has ever made on this PC, with the old values, and a button that restores them.
+
+![Every change the app has made, with the value each thing had before, and a button that puts it back](docs/screenshots/receipts.png)
 
 ## What it cannot do
 

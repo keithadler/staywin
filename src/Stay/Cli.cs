@@ -66,12 +66,14 @@ public static class Cli
             case "screenshots":
             {
                 var dir = args.Skip(1).FirstOrDefault(a => !a.StartsWith("--"));
-                if (dir is null) { o.WriteLine("stay screenshots <folder> [--dark]"); return 64; }
+                if (dir is null) { o.WriteLine("stay screenshots <folder> [--dark] [--announce]"); return 64; }
 #if CLI_BUILD
                 o.WriteLine("screenshots need the window: run \"Stay for Windows 10.exe\" screenshots <folder>");
                 return 2;
 #else
-                return Screenshots.Render(dir, o, Flag(args, "--dark"));
+                var shot = Screenshots.Render(dir, o, Flag(args, "--dark"));
+                if (shot == 0 && Flag(args, "--announce")) Promo.Render(dir, o);
+                return shot;
 #endif
             }
             default:

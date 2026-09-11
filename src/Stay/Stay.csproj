@@ -43,6 +43,10 @@
     <!-- WMI, for the licence check that answers "is ESU actually on" and for the TPM. -->
     <PackageReference Include="System.Management" Version="9.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <Resource Include="..\..\icon\Stay-256.png" Link="Assets/Stay-256.png" />
+  </ItemGroup>
+
   <!-- Bundled so Help works with no internet, on a PC whose owner may have no internet. -->
   <ItemGroup>
     <EmbeddedResource Include="..\..\docs\Help.html" LogicalName="Stay.Help.html" />

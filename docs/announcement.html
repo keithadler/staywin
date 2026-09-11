@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stay for Windows 10</title>
+<style>
+  :root { color-scheme: light dark; --fg:#1d1d22; --muted:#5f5f6b; --bg:#fff; --card:#f4f4f7; --accent:#2c5f8a; }
+  @media (prefers-color-scheme: dark) { :root { --fg:#f2f2f5; --muted:#a2a2ab; --bg:#141418; --card:#232328; --accent:#7fb3dd; } }
+  body { margin:0; font:17px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,sans-serif; color:var(--fg); background:var(--bg); }
+  main { max-width:900px; margin:0 auto; padding:56px 24px 96px; }
+  h1 { font-size:44px; line-height:1.1; margin:0 0 12px; letter-spacing:-0.02em; } .lead { font-size:21px; color:var(--muted); margin:0 0 28px; }
+  img { max-width:100%; border-radius:12px; box-shadow:0 20px 60px rgba(0,0,0,.25); margin:18px 0 32px; }
+  .btn { display:inline-block; background:var(--accent); color:#fff; padding:14px 22px; border-radius:10px; text-decoration:none; font-weight:600; }
+  h2 { font-size:26px; margin:40px 0 8px; } .grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; } .card { background:var(--card); border-radius:12px; padding:18px 20px; } .card h3 { margin:0 0 6px; font-size:18px; }
+  code { font:15px "Cascadia Mono",Consolas,ui-monospace,monospace; background:var(--card); padding:2px 6px; border-radius:6px; } .small { color:var(--muted); font-size:15px; }
+  blockquote { margin:18px 0; padding:14px 18px; background:var(--card); border-left:4px solid var(--accent); border-radius:0 10px 10px 0; font-size:19px; }
+  @media (max-width:640px) { .grid { grid-template-columns:1fr; } h1 { font-size:34px; } }
+</style></head><body><main>
+
+<h1>Windows 10 stopped being supported.<br>Your PC will not tell you where that leaves it.</h1>
+<p class="lead">Are you enrolled in Extended Security Updates? Is that enrolment actually delivering anything? What on this machine is still being patched regardless? Can it take Windows 11, and if not, is that a setting you can change in ten minutes or does it mean a new PC? Stay answers all of it on one screen.</p>
+<p><a class="btn" href="https://github.com/keithadler/staywin/releases/latest">Download for Windows 10</a> &nbsp; <span class="small">Free. Open source. One exe, no installer, no account, no cloud. 64-bit Intel/AMD or ARM.</span></p>
+
+<img src="screenshots/stand.png" alt="Stay showing a PC enrolled in Extended Security Updates that has not had an update in seven months">
+
+<h2>Entitled is not the same as receiving</h2>
+<p>Being entitled to updates and actually getting them are two different things, and they come apart far more often than anybody expects. An ESU enrolment that quietly stopped delivering is worse than none at all, because you believe you are covered.</p>
+<p>So Stay reads what actually happened rather than what should have: the day an update really installed, from Windows' own record of its own fixes. A restart that has been waiting for weeks — a security fix installed and protecting nothing. An update service switched off years ago by a tuning guide somebody followed. Whether anything is watching for malware, how old its definitions are, whether the firewall is on.</p>
+<blockquote>Enrolled in Extended Security Updates, but the last update landed 7 months ago.</blockquote>
+<p>That is a sentence somebody needs to see, and nothing in Windows will say it.</p>
+
+<h2>It shows its working, and it will say it does not know</h2>
+<p>Whether you are enrolled is read from two independent things: the licences Windows holds, and whether anything has installed since support ended, which an unenrolled PC cannot get. When they agree, Stay says so and says why. When they disagree it says <em>two things about this PC disagree, so it will not guess</em>, and shows you both. Telling somebody who is enrolled that they are not is the worst mistake it could make: they pay twice, or give up on a machine that was fine.</p>
+
+<img src="screenshots/patched.png" alt="The dates each piece of the PC stops getting security updates, with the source of each date">
+
+<h2>What an old PC actually needs</h2>
+<div class="grid">
+<div class="card"><h3>Still being patched</h3>It is not all one date. Edge and WebView2 to October 2028, Defender's definitions to October 2028, Microsoft 365 Apps to October 2028, Windows itself only with ESU. Your browser too — and since nearly everything that gets onto a PC arrives through the browser, on an unpatched OS that matters more than anything else here. It is still being updated.</div>
+<div class="card"><h3>Windows 11</h3>Whether this PC can take it and <em>which</em> check fails. A TPM switched off in firmware is ten minutes in the BIOS; a processor that is not on the list is a new PC. Knowing which is the whole question. It will not get around the checks and will not tell you how.</div>
+<div class="card"><h3>Make it faster</h3>Windows times its own start, and times the programs holding it up, in a log almost nobody knows exists. <em>This PC last took 94 seconds to start. OneDrive cost 4.2 of them.</em> Task Manager says "High"; Stay says the number.</div>
+<div class="card"><h3>Turn off the junk</h3>The advertising, the AI hooks, the telemetry, the noise, and the bundled apps nobody asked for. Eight switches are left out because they are Windows 11 features Windows 10 never had, and it says how many and why rather than writing values that do nothing.</div>
+</div>
+
+<img src="screenshots/speed.png" alt="How long this PC took to start and what each startup program cost, from Windows own log">
+
+<h2>What turned itself back on</h2>
+<p>Windows restores its own defaults when it updates itself and does not mention it. No debloat tool tells you, because none of them keep a record of what you switched off six months ago. Stay's receipts are that record, so it can check every value it ever set and tell you what has come back.</p>
+
+<h2>Every change on a receipt that undoes it</h2>
+<p>Every change is written down first, with the value each thing had before, and one button puts any of it back. Removing a bundled app is the only thing here a receipt cannot undo — and Stay says exactly that before the button, not after, keeping a Store link for each one.</p>
+
+<h2>Honest limits</h2>
+<p class="small">It cannot patch Windows, and nothing can except Microsoft. It cannot enrol you in ESU; that is a Microsoft account flow in Settings, so it takes you to the right page and tells you what you will be asked. It will not get around Windows 11's hardware checks and will not tell you how. It does not make Windows 10 fast — if the PC has a spinning hard disk it says so first, and says an SSD would do more for it than everything in the app put together. And it has been tested against a real registry, a real event log and a real package list, and against 256 of its own checks, but <strong>not yet on a real Windows 10 PC</strong>: Windows 10 for ARM was never released and this was built on an M3. If you run it on real Windows 10, the issues page is where to say what happened.</p>
+<p class="small">No account, no cloud, no telemetry. The only network request is a daily check with GitHub for a newer version, which sends no identifier and which you can turn off. MIT licensed, built by Keith Adler. More from the same maker: <a href="https://keithadler.github.io">keithadler.github.io</a>.</p>
+
+</main></body></html>
