@@ -192,6 +192,52 @@ public sealed class WinMachine : IMachine
     }
 
     /// <summary>A real printer, not one of the writers Windows installs for everybody.</summary>
+    /// <summary>
+    /// The browsers on this PC, read from the version each one writes down for its own updater, and which of
+    /// them Windows opens links with.
+    /// </summary>
+    public IReadOnlyList<Browser> Browsers()
+    {
+        var chosen = DefaultBrowser() ?? "";
+        var found = new List<Browser>();
+
+        void Look(string name, string[] keys, string value)
+        {
+            foreach (var key in keys)
+                foreach (var root in new[] { Registry.LocalMachine, Registry.CurrentUser })
+                {
+                    try
+                    {
+                        using var k = root.OpenSubKey(key);
+                        var version = k?.GetValue(value)?.ToString();
+                        if (string.IsNullOrWhiteSpace(version)) continue;
+                        var stem = name.Split(' ')[1];
+                        found.Add(new Browser(name, version, chosen.Contains(stem, StringComparison.OrdinalIgnoreCase)));
+                        return;
+                    }
+                    catch { }
+                }
+        }
+
+        Look("Microsoft Edge", new[] { @"SOFTWARE\WOW6432Node\Microsoft\Edge\BLBeacon", @"Software\Microsoft\Edge\BLBeacon" }, "version");
+        Look("Google Chrome", new[] { @"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon", @"Software\Google\Chrome\BLBeacon" }, "version");
+        Look("Mozilla Firefox", new[] { @"SOFTWARE\Mozilla\Mozilla Firefox", @"SOFTWARE\WOW6432Node\Mozilla\Mozilla Firefox" }, "CurrentVersion");
+
+        return found.OrderByDescending(b => b.Default).ToList();
+    }
+
+    /// <summary>What Windows opens an https link with, as the person chose it.</summary>
+    private static string? DefaultBrowser()
+    {
+        try
+        {
+            using var k = Registry.CurrentUser.OpenSubKey(
+                @"SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice");
+            return k?.GetValue("ProgId")?.ToString();
+        }
+        catch { return null; }
+    }
+
     public bool HasPrinter()
     {
         var builtIn = new[] { "Microsoft Print to PDF", "Microsoft XPS Document Writer", "Fax", "OneNote" };

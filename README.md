@@ -43,6 +43,13 @@ switched on. This app reads it off the machine and says so in one sentence.
 **Where you stand.** What Windows this is, whether it is being patched at all, and until when. Whether ESU is
 enrolled — read from the licences Windows itself holds, not from a registry value somebody could have set by hand.
 
+**It shows its working, and it will say "I don't know".** Whether a PC is enrolled is read from two independent
+things: the licences Windows holds, and whether anything has actually installed since Windows 10 stopped being
+supported. When they agree, the app says so and says why. When they disagree — no licence listed, and yet updates
+arriving — it says *two things about this PC disagree, so it will not guess*, and shows you both. Telling somebody
+who is enrolled that they are not is the worst mistake this app could make: they pay twice, or give up on a PC
+that was fine.
+
 And then the question nothing else asks: **is it actually working?** Being entitled to updates and receiving them
 are different things, and they come apart more often than anybody expects. Stay reads the day an update really
 installed, whether one is sitting waiting for a restart, whether the update service was switched off years ago by
@@ -91,6 +98,18 @@ It also lists the bundled apps — Solitaire, Clipchamp, the Bing apps, Copilot 
 calls junk. That is the **only** thing the app does that a receipt cannot undo, it says so before it does it, and
 the receipt keeps a Store link for each so you can put it back.
 
+**What turned itself back on.** The thing no debloat tool tells you. Windows puts its own defaults back when it
+updates itself and does not mention it, and nobody remembers what they switched off six months ago. The receipts
+are that record, so Stay can check every value it ever set and tell you *three things you turned off have turned
+themselves back on* — and which, and when you turned them off, and that a feature update is what does this.
+
+**Your browser.** Almost everything that gets onto a PC arrives through the browser, so on a Windows nobody is
+patching it matters more than every switch in this app put together. The good news is it is still being updated.
+Stay names the browsers on the PC, which one opens your links, and what each maker has actually committed to:
+Microsoft has given a date for Edge (October 2028), Google has published no date for Chrome at all, and Mozilla
+has said there is no end date for Firefox. Where nobody has promised anything, the app says that rather than
+inventing a date.
+
 **Receipts.** Every change this app has ever made on this PC, with the old values, and a button that restores them.
 
 ## What it cannot do
@@ -122,6 +141,8 @@ stay speed --stop OneDrive   stop one program starting with the PC
 stay junk                    the advertising, AI hooks and telemetry still on
 stay junk --all              turn all of it off
 stay junk --apps             remove the bundled apps the list calls junk
+stay drift                   what you turned off that has turned itself back on
+stay drift --fix             turn all of it off again, with a receipt
 stay receipts                every change this app has made on this PC
 stay undo <id>               put a receipt's changes back exactly
 stay report --json           all of it, for a fleet or for your own records

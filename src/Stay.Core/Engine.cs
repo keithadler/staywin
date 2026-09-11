@@ -41,11 +41,15 @@ public sealed class Engine
     public Standing Scan()
     {
         var windows = _machine.Windows();
-        var esu = ReadEsu(windows);
-        return new Standing(windows, esu, Components(windows, esu), Elevenable.Check(_machine),
+        var watch = Watching();
+        var esu = ReadEsu(windows, watch.LastUpdate);
+        IReadOnlyList<Browser> browsers;
+        try { browsers = _machine.Browsers(); } catch { browsers = Array.Empty<Browser>(); }
+
+        return new Standing(windows, esu, Components(windows, esu), browsers, Elevenable.Check(_machine),
                             Guards.All.Select(StatusOf).ToList(),
                             Junk.Items.Select(StatusOf).ToList(),
-                            Bundled(), Watching(), Today);
+                            Bundled(), watch, Today);
     }
 
     /// <summary>
@@ -80,7 +84,7 @@ public sealed class Engine
     /// somebody might have set by hand. An active licence whose name says ESU is the thing that makes updates
     /// arrive, so it is the thing worth asking about.
     /// </summary>
-    public Esu ReadEsu(WindowsBuild windows)
+    public Esu ReadEsu(WindowsBuild windows, DateOnly? lastUpdate = null)
     {
         if (windows.IsWindows11)
             return new Esu(EsuState.NotApplicable, "This is Windows 11. It is supported in the ordinary way.");
@@ -100,16 +104,50 @@ public sealed class Engine
             l.Name.Contains("ESU", StringComparison.OrdinalIgnoreCase)
             || l.Description.Contains("Extended Security Update", StringComparison.OrdinalIgnoreCase));
 
-        if (found.Name is null)
-            return new Esu(EsuState.NotEnrolled,
-                "No Extended Security Updates licence on this PC. Windows itself is not being patched.");
+        // The second, independent signal. After 14 October 2025 a Windows 10 PC that is not enrolled gets no
+        // updates for Windows, so anything installed since then is evidence that something is still arriving.
+        // It is not proof: .NET and other components are supported separately and also appear on this list.
+        bool arriving = lastUpdate is { } day && day > Lifecycle.Windows10Ended;
+        string sinceEnd = lastUpdate is { } d ? $"{d:d MMMM yyyy}" : "never";
 
-        return found.Active
-            ? new Esu(EsuState.Enrolled,
-                "Enrolled. Windows is getting critical and important security updates.",
-                found.Name, new DateTimeOffset(Lifecycle.ConsumerEsuEnds.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero))
-            : new Esu(EsuState.NotEnrolled,
-                $"An ESU licence is present but not active ({found.Name}). Windows is not being patched.", found.Name);
+        if (found.Name is null)
+        {
+            // The case worth getting right. Saying "not enrolled" to somebody who is enrolled is the worst thing
+            // this app could do: they would go and pay for what they already have, or worse, believe they are
+            // unprotected and give up. When the evidence disagrees with the licence list, say so instead.
+            if (arriving)
+                return new Esu(EsuState.Unknown,
+                    "Two things about this PC disagree, so it will not guess.",
+                    Because: $"No Extended Security Updates licence is listed, and yet an update installed on "
+                           + $"{sinceEnd}, after Windows 10 stopped being supported. Either this PC is enrolled "
+                           + "in a way this app does not recognise, or that update was for something other than "
+                           + "Windows itself, such as .NET. Settings > Update & Security > Windows Update will "
+                           + "say which.");
+
+            return new Esu(EsuState.NotEnrolled,
+                "No Extended Security Updates licence on this PC. Windows itself is not being patched.",
+                Because: lastUpdate is null
+                    ? "No licence is listed, and Windows has no record of an update ever installing."
+                    : $"No licence is listed, and the last update installed on {sinceEnd}, which is before "
+                    + "Windows 10 stopped being supported. Both point the same way.");
+        }
+
+        if (!found.Active)
+            return new Esu(EsuState.NotEnrolled,
+                $"An ESU licence is present but not active ({found.Name}). Windows is not being patched.",
+                found.Name,
+                Because: "Windows lists the licence but does not count it as in force. That usually means the "
+                       + "enrolment was started and never finished.");
+
+        return new Esu(EsuState.Enrolled,
+            "Enrolled. Windows is getting critical and important security updates.",
+            found.Name,
+            new DateTimeOffset(Lifecycle.ConsumerEsuEnds.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero),
+            Because: arriving
+                ? $"Windows holds an active licence ({found.Name}), and an update installed on {sinceEnd}, "
+                + "after support ended. The licence and what actually arrived agree."
+                : $"Windows holds an active licence ({found.Name}). Nothing has installed since support ended, "
+                + "which is worth watching.");
     }
 
     /// <summary>Everything on this PC that is still getting security updates, and the day each one stops.</summary>
@@ -167,6 +205,48 @@ public sealed class Engine
 
         return list;
     }
+
+    // ---------- what has come back on its own ----------
+
+    /// <summary>
+    /// Switches this app turned off that are on again.
+    ///
+    /// This is the thing no debloat tool tells you. Windows feature updates put back what you turned off —
+    /// telemetry, the advertising, sometimes a whole app — and because nobody keeps a record of what they
+    /// switched off six months ago, nobody notices. The receipts are that record, so this app can notice.
+    /// </summary>
+    public IReadOnlyList<Drifted> Drift()
+    {
+        var drifted = new List<Drifted>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Newest receipt first, so the most recent time a switch was set is the one that counts. An older
+        // receipt setting the same value is history, not drift.
+        foreach (var receipt in _store.List().OrderByDescending(r => r.When))
+        {
+            // A receipt that was undone is a change somebody took back on purpose. The values being as they were
+            // before is the point of that, not drift.
+            if (receipt.Undone is not null) continue;
+
+            foreach (var change in receipt.Registry.Where(c => !c.Failed))
+            {
+                if (!seen.Add(change.Path)) continue;
+
+                var now = _reg.Read(change.Hive, change.Key, change.Name);
+                if (Matches(now, change.After)) continue;         // still as it was left
+                if (Matches(now, change.Before)) drifted.Add(new Drifted(change, receipt.Id, receipt.When, true));
+                else drifted.Add(new Drifted(change, receipt.Id, receipt.When, false));
+            }
+        }
+
+        return drifted.OrderByDescending(d => d.ExactlyBack).ThenBy(d => d.Change.GuardId).ToList();
+    }
+
+    /// <summary>Putting back everything that has come undone, as one plan through the ordinary path.</summary>
+    public Plan PlanFor(IEnumerable<Drifted> drifted)
+        => new(Array.Empty<Guard>(),
+               drifted.Select(d => d.Change with { Before = _reg.Read(d.Change.Hive, d.Change.Key, d.Change.Name) })
+                      .ToList());
 
     // ---------- what is making it slow ----------
 

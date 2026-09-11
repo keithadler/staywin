@@ -56,6 +56,7 @@ public static class Cli
             case "updates": return Updates(o, json);
             case "eleven": case "11": return Eleven(o, json);
             case "guards": case "open": return GuardList(o, json);
+            case "drift": return DriftPane(args, o, json);
             case "speed": return SpeedPane(args, o, json);
             case "junk": return JunkPane(args, o, json);
             case "harden": return Harden(args, o, json);
@@ -115,12 +116,15 @@ public static class Cli
             o.WriteLine($"This is an older Windows 10 than 22H2. Nothing, including ESU, covers it. Update to 22H2 first.");
 
         o.WriteLine();
-        o.WriteLine(standing.Working
-            ? "Windows on this PC is still getting security updates."
-            : standing.Patched
-                ? "Windows on this PC is entitled to security updates, but something is wrong."
-                : "Windows on this PC is NOT getting security updates.");
+        o.WriteLine(standing.Esu.State == EsuState.Unknown
+            ? "This app cannot tell whether Windows on this PC is being patched."
+            : standing.Working
+                ? "Windows on this PC is still getting security updates."
+                : standing.Patched
+                    ? "Windows on this PC is entitled to security updates, but something is wrong."
+                    : "Windows on this PC is NOT getting security updates.");
         o.WriteLine($"  {standing.Esu.Detail}");
+        if (standing.Esu.Because is { } because) o.WriteLine($"  {because}");
         if (standing.Watch.LastUpdate is { } landed)
             o.WriteLine($"  The last update actually installed on {landed:d MMMM yyyy}, "
                         + $"{Lifecycle.HowLong(landed, standing.Today)}.");
@@ -148,6 +152,21 @@ public static class Cli
                 o.WriteLine($"  {(wrong.Serious ? "!" : "-")} {wrong.What}");
                 o.WriteLine($"      {wrong.Why}");
                 o.WriteLine($"      {wrong.Fix}");
+            }
+        }
+
+        if (standing.Browsers.Count > 0)
+        {
+            o.WriteLine();
+            o.WriteLine("YOUR BROWSER");
+            o.WriteLine("  Almost everything that gets onto a PC arrives through the browser, so on a Windows that");
+            o.WriteLine("  is not being patched it matters more than anything else here. It is still being updated.");
+            foreach (var browser in standing.Browsers)
+            {
+                var (until, said) = Lifecycle.BrowserSupport(browser.Name);
+                var when = until is null ? "no end date given" : $"until {until:MMMM yyyy}";
+                o.WriteLine($"  {browser.Name} {browser.Version}{(browser.Default ? "  (opens your links)" : "")}  - {when}");
+                o.WriteLine($"      {said}");
             }
         }
 
@@ -284,6 +303,38 @@ public static class Cli
         if (plan.NeedsRestart) o.WriteLine("Some of it takes effect after a restart.");
         o.WriteLine($"Put it all back with: stay undo {receipt.Id}");
         return receipt.Failed > 0 ? 2 : 0;
+    }
+
+    // ---------- what has come back on its own ----------
+
+    private static int DriftPane(string[] args, TextWriter o, bool json)
+    {
+        var engine = MakeEngine();
+        var drifted = engine.Drift();
+
+        if (json) { Json(o, drifted.Select(d => new { d.What, d.Why, d.ReceiptId, d.When, d.ExactlyBack, d.Change.Path })); return drifted.Count > 0 ? 1 : 0; }
+
+        if (drifted.Count == 0)
+        {
+            o.WriteLine("Everything this app has turned off is still off.");
+            return 0;
+        }
+
+        o.WriteLine(drifted.Count == 1
+            ? "One thing you turned off has turned itself back on."
+            : $"{drifted.Count} things you turned off have turned themselves back on.");
+        o.WriteLine();
+        foreach (var one in drifted)
+        {
+            o.WriteLine($"  {one.What}");
+            o.WriteLine($"      You turned it off on {one.When:d MMMM yyyy}, receipt {one.ReceiptId}.");
+            o.WriteLine($"      {one.Why}");
+        }
+
+        if (Flag(args, "--fix")) return Do(engine, engine.PlanFor(drifted), args, o, json);
+        o.WriteLine();
+        o.WriteLine("Turn them off again: stay drift --fix");
+        return 1;
     }
 
     // ---------- what is making it slow ----------
@@ -555,6 +606,8 @@ public static class Cli
         stay updates                 everything here that still gets security updates, and the date each stops
         stay eleven                  whether this PC could take Windows 11, and which check fails
         stay guards                  what is open that this app can shut
+        stay drift                   what you turned off that has turned itself back on
+        stay drift --fix             turn all of it off again, with a receipt
         stay speed                   what is making this PC slow, and what to do about it
         stay speed --all             do everything it suggests for speed, with a receipt
         stay speed --stop OneDrive   stop one program starting with the PC

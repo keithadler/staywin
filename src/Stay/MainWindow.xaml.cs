@@ -60,6 +60,17 @@ public partial class MainWindow : Window
         BarText.Text = said;
     }
 
+    /// <summary>Putting back what Windows undid, through the same path as any other change.</summary>
+    private void FixDrift(object sender, RoutedEventArgs e)
+    {
+        var plan = _shell.PlanDrift();
+        if (plan.IsEmpty) { Say("Nothing ticked."); return; }
+
+        var receipt = _shell.Apply(plan, false);
+        _shell.Rescan();
+        Say($"Turned {receipt.Changed} of them off again. Receipt {receipt.Id}.");
+    }
+
     private void OpenUpdate(object sender, RoutedEventArgs e) => Shell.Open("ms-settings:windowsupdate");
 
     /// <summary>Windows' own Disk Cleanup, because deleting files is the one thing a receipt cannot undo.</summary>

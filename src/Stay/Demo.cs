@@ -27,6 +27,9 @@ public static class Demo
         pc.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
         pc.Licences_.Add(("Windows(R), Windows10ESUConsumer", "Extended Security Updates", true));
         pc.Programs.Add("Microsoft 365");
+        pc.Installed_.Add(new Browser("Google Chrome", "141.0.7390.68", true));
+        pc.Installed_.Add(new Browser("Microsoft Edge", "141.0.3537.57", false));
+        pc.Installed_.Add(new Browser("Mozilla Firefox", "144.0.1", false));
 
         // A slow morning on a tired laptop: a 94 second start, four things holding it up, a disk nearly full.
         var pace = new FakePerformance

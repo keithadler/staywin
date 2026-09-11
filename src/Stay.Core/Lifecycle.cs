@@ -56,6 +56,34 @@ public static class Lifecycle
         "$30 once, or the same in local money, plus tax. It covers up to ten PCs on the same account.",
     };
 
+    /// <summary>
+    /// What each browser maker has actually committed to for Windows 10, which is not the same as what people
+    /// assume. Only Microsoft has named a date. Google has not published one at all, and Mozilla has said there
+    /// is no end date rather than giving one.
+    ///
+    /// This matters more than any switch in this app. On an OS nobody is patching, the browser is where almost
+    /// all of the real risk is, and on Windows 10 the browser is still being patched. Saying so is the most
+    /// reassuring true thing there is to say.
+    /// </summary>
+    public static (DateOnly? Until, string Said) BrowserSupport(string name)
+    {
+        if (name.Contains("Edge", StringComparison.OrdinalIgnoreCase))
+            return (EdgeEnds, "Microsoft has committed to updating Edge on Windows 10 until this date.");
+
+        if (name.Contains("Chrome", StringComparison.OrdinalIgnoreCase))
+            return (null, "Google has not published an end date for Chrome on Windows 10. Chrome and Edge are "
+                        + "built on the same engine, and Microsoft is updating Edge here until October 2028, so "
+                        + "Chrome is expected to keep going for a good while yet. That is an expectation, not a "
+                        + "promise anybody has made.");
+
+        if (name.Contains("Firefox", StringComparison.OrdinalIgnoreCase))
+            return (null, "Mozilla has said it will keep supporting Windows 10 and has not set an end date. "
+                        + "Firefox does not use Chrome's engine, so it does not depend on what Google or "
+                        + "Microsoft decide.");
+
+        return (null, "This app does not know what its maker has said about Windows 10. Worth asking them.");
+    }
+
     /// <summary>How many days until a date, counted from a day the caller supplies rather than from the clock.</summary>
     public static int DaysUntil(DateOnly when, DateOnly today) => when.DayNumber - today.DayNumber;
 

@@ -34,6 +34,15 @@ grep -q "8 of its 34 switches" README.md; say $? "and the README says 8 of 34"
 grep -q "BingSearchEnabled" src/Stay.Core/Junk.cs && grep -q "EnableFeeds" src/Stay.Core/Junk.cs
 say $? "the two with Windows 10 equivalents write those too"
 
+grep -q "will say \"I don't know\"" README.md || grep -q 'will not guess' README.md
+say $? "the README says the app admits when it cannot tell"
+grep -q "Two things about this PC disagree" src/Stay.Core/Engine.cs
+say $? "and the app really does say that"
+grep -q "turned itself back on" README.md && grep -q "public IReadOnlyList<Drifted> Drift" src/Stay.Core/Engine.cs
+say $? "drift is documented and implemented"
+grep -q "expectation, not a" src/Stay.Core/Lifecycle.cs
+say $? "no browser date is claimed that nobody has given"
+
 grep -q "is it actually working" README.md
 say $? "the README explains the difference between entitled and receiving"
 grep -q "only" README.md && grep -q "NeedsStore" src/Stay.Core/Receipt.cs

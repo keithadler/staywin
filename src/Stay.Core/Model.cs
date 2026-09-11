@@ -89,7 +89,12 @@ public enum EsuState
     Unknown,
 }
 
-public sealed record Esu(EsuState State, string Detail, string? LicenceName = null, DateTimeOffset? Until = null);
+public sealed record Esu(
+    EsuState State,
+    string Detail,
+    string? LicenceName = null,
+    DateTimeOffset? Until = null,
+    string? Because = null);  // the evidence this was decided on, so somebody can disagree with it
 
 /// <summary>One thing on this PC that gets security updates, and the date it stops getting them.</summary>
 public sealed record Component(
@@ -175,10 +180,30 @@ public sealed record AppState(InstalledApp App, AppEntry? Entry)
     public string StoreLink => $"ms-windows-store://pdp/?PFN={App.FamilyName}";
 }
 
+/// <summary>
+/// A change this app made that is not as it was left. Either something put the old value back — which is what a
+/// Windows feature update does — or something else set it to a third thing.
+/// </summary>
+public sealed record Drifted(RegChange Change, string ReceiptId, DateTimeOffset When, bool ExactlyBack)
+{
+    public string What => Change.GuardId.StartsWith("startup:")
+        ? Change.GuardId["startup:".Length..] + " is starting with the PC again"
+        : Guards.Find(Change.GuardId)?.Title ?? Change.GuardId;
+
+    public string Why => ExactlyBack
+        ? "This is exactly the value it had before you turned it off, which is what a Windows feature update "
+        + "does: it puts its own defaults back and does not mention it."
+        : "It is not the value you set and not the one it had before, so something else has been changing it.";
+}
+
+/// <summary>A browser on this PC.</summary>
+public sealed record Browser(string Name, string Version, bool Default);
+
 public sealed record Standing(
     WindowsBuild Windows,
     Esu Esu,
     IReadOnlyList<Component> Components,
+    IReadOnlyList<Browser> Browsers,
     Eleven Eleven,
     IReadOnlyList<GuardStatus> Guards,
     IReadOnlyList<GuardStatus> Junk,

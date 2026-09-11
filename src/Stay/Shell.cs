@@ -104,6 +104,40 @@ public sealed class RequirementRow
 
 /// <summary>One program that starts with the PC, on the speed pane.</summary>
 /// <summary>One thing wrong with how this PC is being looked after.</summary>
+/// <summary>One switch that has turned itself back on.</summary>
+/// <summary>One browser on this PC, and what its maker has actually committed to.</summary>
+public sealed class BrowserRow
+{
+    public BrowserRow(Browser browser, DateOnly today)
+    {
+        var (until, said) = Lifecycle.BrowserSupport(browser.Name);
+        Name = browser.Name + (browser.Default ? "  (opens your links)" : "");
+        Version = "Version " + browser.Version;
+        Said = said;
+        StateKey = until is null ? "Partly" : until > today ? "Shut" : "Loud";
+        StateWord = until is null ? "no end date given" : $"until {until:MMMM yyyy}";
+    }
+    public string Name { get; }
+    public string Version { get; }
+    public string Said { get; }
+    public string StateKey { get; }
+    public string StateWord { get; }
+}
+
+public sealed class DriftRow : INotifyPropertyChanged
+{
+    public Drifted Drifted { get; }
+    private bool _selected = true;
+    public bool Selected { get => _selected; set { _selected = value; PropertyChanged?.Invoke(this, new(nameof(Selected))); } }
+
+    public DriftRow(Drifted drifted) { Drifted = drifted; }
+
+    public string What => Drifted.What;
+    public string Why => Drifted.Why;
+    public string When => $"You turned it off on {Drifted.When:d MMMM yyyy}.";
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
 public sealed class WrongRow
 {
     public WrongRow(Wrong wrong)
@@ -209,6 +243,8 @@ public sealed class Shell : INotifyPropertyChanged
         Space = new ObservableCollection<SpaceRow>();
         Wrong = new ObservableCollection<WrongRow>();
         Apps = new ObservableCollection<AppRow>();
+        Drift = new ObservableCollection<DriftRow>();
+        Browsers = new ObservableCollection<BrowserRow>();
         Components = new ObservableCollection<ComponentRow>();
         Requirements = new ObservableCollection<RequirementRow>();
         Receipts = new ObservableCollection<ReceiptRow>();
@@ -222,6 +258,8 @@ public sealed class Shell : INotifyPropertyChanged
     public ObservableCollection<SpaceRow> Space { get; }
     public ObservableCollection<WrongRow> Wrong { get; }
     public ObservableCollection<AppRow> Apps { get; }
+    public ObservableCollection<DriftRow> Drift { get; }
+    public ObservableCollection<BrowserRow> Browsers { get; }
     public ObservableCollection<ComponentRow> Components { get; }
     public ObservableCollection<RequirementRow> Requirements { get; }
     public ObservableCollection<ReceiptRow> Receipts { get; }
@@ -260,6 +298,12 @@ public sealed class Shell : INotifyPropertyChanged
         Apps.Clear();
         foreach (var app in _standing.Apps) Apps.Add(new AppRow(app, app.Suggested));
 
+        Browsers.Clear();
+        foreach (var browser in _standing.Browsers) Browsers.Add(new BrowserRow(browser, _standing.Today));
+
+        Drift.Clear();
+        foreach (var drifted in _engine.Drift()) Drift.Add(new DriftRow(drifted));
+
         Wrong.Clear();
         foreach (var wrong in _standing.Wrong) Wrong.Add(new WrongRow(wrong));
 
@@ -273,7 +317,10 @@ public sealed class Shell : INotifyPropertyChanged
                                      nameof(SpaceSummary), nameof(HasSpace), nameof(JunkSummary),
                                      nameof(HasWrong), nameof(WrongSummary), nameof(LastUpdateLine),
                                      nameof(AppsSummary), nameof(HasApps),
-                                     nameof(ElevenOnlyNote), nameof(HasElevenOnly) })
+                                     nameof(ElevenOnlyNote), nameof(HasElevenOnly),
+                                     nameof(HasDrift), nameof(DriftSummary),
+                                     nameof(HasBrowsers), nameof(BrowserNote),
+                                     nameof(Because), nameof(HasBecause) })
             PropertyChanged?.Invoke(this, new(name));
     }
 
@@ -285,17 +332,45 @@ public sealed class Shell : INotifyPropertyChanged
 
     public string Headline => _standing.Windows.IsWindows11
         ? "This is Windows 11."
+        // An app that cannot tell should say so rather than pick the alarming answer. Telling somebody who is
+        // enrolled that they are not is how they end up paying twice, or giving up on a PC that was fine.
+        : _standing.Esu.State == EsuState.Unknown
+            ? "This app cannot tell whether Windows on this PC is being patched."
         : _standing.Working
             ? "Windows on this PC is still getting security updates."
             : _standing.Patched
                 ? "This PC is entitled to security updates, but something is wrong."
                 : "Windows on this PC is not getting security updates.";
 
+    public bool HasBrowsers => Browsers.Count > 0;
+
+    /// <summary>
+    /// The most reassuring true thing this app has to say, and the one people get wrong. On an OS nobody is
+    /// patching, nearly all of the real risk arrives through the browser — and on Windows 10 the browser is
+    /// still being patched.
+    /// </summary>
+    public string BrowserNote =>
+        "Almost everything that gets onto a PC arrives through the browser, so on a Windows that is not being "
+        + "patched the browser matters more than anything else on this page. The good news is that it is still "
+        + "being updated here, by every maker, and will be for years.";
+
+    public bool HasDrift => Drift.Count > 0;
+
+    public string DriftSummary => Drift.Count == 1
+        ? "One thing you turned off has turned itself back on."
+        : $"{Drift.Count} things you turned off have turned themselves back on.";
+
+    public Plan PlanDrift() => _engine.PlanFor(Drift.Where(d => d.Selected).Select(d => d.Drifted));
+
     public bool HasWrong => Wrong.Count > 0;
 
     public string WrongSummary => Wrong.Count == 1
         ? "One thing is stopping this PC being looked after properly."
         : $"{Wrong.Count} things are stopping this PC being looked after properly.";
+
+    /// <summary>The evidence the ESU answer was reached on, so somebody can disagree with it.</summary>
+    public string Because => _standing.Esu.Because ?? "";
+    public bool HasBecause => Because.Length > 0;
 
     public string LastUpdateLine => _standing.Watch.LastUpdate is { } landed
         ? $"The last update actually installed on {landed:d MMMM yyyy}, {Lifecycle.HowLong(landed, _standing.Today)}."

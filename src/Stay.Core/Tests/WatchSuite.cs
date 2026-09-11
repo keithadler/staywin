@@ -89,6 +89,80 @@ public static class WatchSuite
         s.Equal("on Windows 11 it finds nothing to say", 0,
             On(new FakeProtection { Installed = new DateOnly(2025, 1, 1), Waiting = true }, eleven).Scan().Wrong.Count);
 
+        // ---- the licence list is one signal, not the only one ----
+        //
+        // Telling somebody who is enrolled that they are not is the worst mistake this app can make: they go and
+        // pay again for what they have, or believe they are unprotected and give up on the PC. So when the
+        // licence list and what actually arrived disagree, the app says it cannot tell.
+        var bare = new FakeMachine();
+        bare.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
+
+        var arrivingAnyway = new Engine(new FakeRegistry(), bare, new FakePerformance(),
+                                        new FakeProtection { Installed = new DateOnly(2026, 9, 9) },
+                                        new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(),
+                                        "1.0.0", "PC", "sam").Scan();
+        s.Equal("no licence, but updates arriving since support ended, is not called 'not enrolled'",
+            EsuState.Unknown, arrivingAnyway.Esu.State);
+        s.Check("it says plainly why it will not answer",
+            arrivingAnyway.Esu.Detail.Contains("disagree"));
+        s.Check("and shows the evidence it is troubled by",
+            arrivingAnyway.Esu.Because!.Contains("9 September 2026"));
+        s.Check("naming the other thing it could be",
+            arrivingAnyway.Esu.Because!.Contains(".NET"));
+
+        var nothingArriving = new Engine(new FakeRegistry(), bare, new FakePerformance(),
+                                         new FakeProtection { Installed = new DateOnly(2025, 9, 1) },
+                                         new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(),
+                                         "1.0.0", "PC", "sam").Scan();
+        s.Equal("no licence and nothing arriving since is 'not enrolled', confidently",
+            EsuState.NotEnrolled, nothingArriving.Esu.State);
+        s.Check("with both signals given as the reason",
+            nothingArriving.Esu.Because!.Contains("Both point the same way"));
+
+        var enrolledAndWorking = On(new FakeProtection { Installed = new DateOnly(2026, 9, 9) }, Enrolled()).Scan();
+        s.Equal("a licence plus updates arriving is enrolled", EsuState.Enrolled, enrolledAndWorking.Esu.State);
+        s.Check("and the app says the two agree", enrolledAndWorking.Esu.Because!.Contains("agree"));
+
+        // Enrolled, and nothing has arrived since before Windows 10 even ended: the licence is the only thing
+        // saying this PC is covered, and nothing it did backs that up.
+        var enrolledNothingEver = On(new FakeProtection { Installed = new DateOnly(2025, 6, 1) }, Enrolled()).Scan();
+        s.Equal("a licence with nothing arriving since support ended is still enrolled",
+            EsuState.Enrolled, enrolledNothingEver.Esu.State);
+        s.Check("but the reason says so", enrolledNothingEver.Esu.Because!.Contains("worth watching"));
+
+        // Enrolled, updates did arrive after support ended, but the last was seven months ago. The licence and
+        // the evidence agree that ESU works; the fault list is what says it has stopped.
+        var enrolledThenStopped = On(new FakeProtection { Installed = new DateOnly(2026, 2, 1) }, Enrolled()).Scan();
+        s.Check("an enrolment that worked and then stopped still reads as enrolled",
+            enrolledThenStopped.Esu.State == EsuState.Enrolled);
+        s.Check("and it is the fault list, not the licence, that raises it",
+            enrolledThenStopped.Wrong.Any(w => w.Serious) && !enrolledThenStopped.Working);
+
+        var nothingEver = new Engine(new FakeRegistry(), bare, new FakePerformance(),
+                                     new FakeProtection { Installed = null },
+                                     new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(),
+                                     "1.0.0", "PC", "sam").Scan();
+        s.Check("a PC with no record of any update at all is still answerable",
+            nothingEver.Esu.Because!.Contains("no record"));
+
+        var noLicences = new Engine(new FakeRegistry(), new FakeMachine(), new FakePerformance(), new FakeProtection(),
+                                    new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(),
+                                    "1.0.0", "PC", "sam").Scan();
+        s.Equal("a PC that would not list its licences is unknown, not unenrolled",
+            EsuState.Unknown, noLicences.Esu.State);
+        s.Check("and it says why, which is usually that nobody ran it as an administrator",
+            noLicences.Esu.Detail.Contains("administrator"));
+
+        // The headline and the verdict have to agree. They came apart once: the detail said "cannot tell" while
+        // the line above it said "NOT getting security updates", which is the alarming answer, confidently given.
+        s.Check("a PC it cannot judge is not declared unpatched",
+            arrivingAnyway.Esu.State == EsuState.Unknown && !arrivingAnyway.Patched && !arrivingAnyway.Working,
+            "Unknown is its own answer and must not be rendered as either of the other two");
+
+        s.Check("every answer it gives carries its reasoning, except the ones about another Windows",
+            new[] { arrivingAnyway, nothingArriving, enrolledAndWorking, enrolledNothingEver }
+                .All(x => !string.IsNullOrWhiteSpace(x.Esu.Because)));
+
         // ---- a switch for a feature this Windows never had is not a switch ----
         var ten = On(new FakeProtection(), Enrolled());
         var here = ten.Scan();
@@ -122,6 +196,32 @@ public static class WatchSuite
 
         s.Check("every junk switch either works on Windows 10 or is marked as not",
             Core.Junk.Items.All(g => g.OnlyIf is null or "win11" or "win10"));
+
+        // ---- the browser, which is where the risk actually is ----
+        var edge = Lifecycle.BrowserSupport("Microsoft Edge");
+        s.Equal("Microsoft has given a date for Edge, so the app gives one", Lifecycle.EdgeEnds, edge.Until);
+
+        var chrome = Lifecycle.BrowserSupport("Google Chrome");
+        s.Check("Google has not, so the app does not invent one", chrome.Until is null);
+        s.Check("it says what is expected and marks it as an expectation",
+            chrome.Said.Contains("expectation, not a promise"));
+
+        var firefox = Lifecycle.BrowserSupport("Mozilla Firefox");
+        s.Check("Mozilla said there is no end date, which is not the same as silence", firefox.Until is null);
+        s.Check("and the app says Firefox does not depend on the other two",
+            firefox.Said.Contains("does not use Chrome's engine"));
+
+        var unknown = Lifecycle.BrowserSupport("Some Other Browser");
+        s.Check("a browser the app has not heard of gets an honest shrug",
+            unknown.Until is null && unknown.Said.Contains("does not know"));
+
+        var withBrowsers = new FakeMachine();
+        withBrowsers.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
+        withBrowsers.Installed_.Add(new Browser("Google Chrome", "141.0.0.0", false));
+        withBrowsers.Installed_.Add(new Browser("Microsoft Edge", "141.0.3021.0", true));
+        var seen = On(new FakeProtection(), withBrowsers).Scan();
+        s.Equal("the browsers on the PC are reported", 2, seen.Browsers.Count);
+        s.Check("with the one that opens links first", seen.Browsers[0].Default);
 
         // ---- a PC that has never recorded an update is not accused of anything ----
         s.Check("no record of an update is not treated as a fault",

@@ -35,6 +35,9 @@ public interface IMachine
 
     /// <summary>Whether a printer other than the built-in writers is set up, so the spooler advice can be honest.</summary>
     bool HasPrinter();
+
+    /// <summary>The browsers on this PC, the default one first.</summary>
+    IReadOnlyList<Browser> Browsers();
 }
 
 /// <summary>How this PC performs, and what is making it slow. Separate from IMachine because it is a different
@@ -141,6 +144,10 @@ public sealed class FakeMachine : IMachine
     public long SystemDiskBytes() => Disk;
     public bool Installed(string what) => Programs.Contains(what);
     public bool HasPrinter() => Printer;
+    public List<Browser> Installed_ { get; } = new();
+    // Ordered here as well as in the real one: a fake that does not keep the promise the interface makes is a
+    // fake that hides the bug rather than finding it.
+    public IReadOnlyList<Browser> Browsers() => Installed_.OrderByDescending(b => b.Default).ToList();
 }
 
 /// <summary>A made-up PC's performance, so the speed half can be reasoned about without a slow PC to hand.</summary>

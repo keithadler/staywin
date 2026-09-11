@@ -110,6 +110,39 @@
             </Border>
         </DataTemplate>
 
+        <DataTemplate x:Key="BrowserTemplate" DataType="{x:Type local:BrowserRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource H2}"/>
+                        <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                            <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Version}" Style="{StaticResource Small}" Margin="0,3,0,0"/>
+                    <TextBlock Text="{Binding Said}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DriftTemplate" DataType="{x:Type local:DriftRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Selected}" VerticalAlignment="Top" Margin="0,4,12,0"/>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding What}" Style="{StaticResource H2}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding When}" Style="{StaticResource Small}" Margin="0,3,0,0"/>
+                        <TextBlock Text="{Binding Why}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="WrongTemplate" DataType="{x:Type local:WrongRow}">
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
@@ -239,6 +272,22 @@
                         <TextBlock Text="{Binding HeadlineDetail}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         <TextBlock Text="{Binding WindowsLine}" Style="{StaticResource Small}" Margin="0,10,0,0"/>
                         <TextBlock Text="{Binding LastUpdateLine}" Style="{StaticResource Small}" Margin="0,2,0,0"/>
+                        <Border Style="{StaticResource CardStyle}" Margin="0,12,0,0"
+                                Visibility="{Binding HasBecause, Converter={StaticResource Vis}}">
+                            <StackPanel>
+                                <TextBlock Text="How it worked that out" Style="{StaticResource H2}"/>
+                                <TextBlock Text="{Binding Because}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Visibility="{Binding HasDrift, Converter={StaticResource Vis}}" Margin="0,18,0,0">
+                            <TextBlock Text="{Binding DriftSummary}" Style="{StaticResource H1}" FontSize="21"/>
+                            <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,10"
+                                       Text="Windows puts its own defaults back when it updates itself, and does not mention it. Nobody remembers what they switched off six months ago — but the receipts do, so this app can check."/>
+                            <ItemsControl ItemsSource="{Binding Drift}" ItemTemplate="{StaticResource DriftTemplate}"/>
+                            <Button Content="Turn the ticked ones off again" HorizontalAlignment="Left"
+                                    Margin="0,10,0,0" Click="FixDrift"/>
+                        </StackPanel>
 
                         <StackPanel Visibility="{Binding HasWrong, Converter={StaticResource Vis}}" Margin="0,18,0,0">
                             <TextBlock Text="{Binding WrongSummary}" Style="{StaticResource H1}" FontSize="21"/>
@@ -286,6 +335,12 @@
                         <TextBlock Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"
                                    Text="Different pieces of this PC stop getting security updates on different days. Nothing on the machine tells you that, so here it is, with where each date comes from."/>
                         <ItemsControl ItemsSource="{Binding Components}" ItemTemplate="{StaticResource ComponentTemplate}"/>
+
+                        <StackPanel Visibility="{Binding HasBrowsers, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Your browser" Style="{StaticResource H1}" FontSize="21" Margin="0,22,0,0"/>
+                            <TextBlock Text="{Binding BrowserNote}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                            <ItemsControl ItemsSource="{Binding Browsers}" ItemTemplate="{StaticResource BrowserTemplate}"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- windows 11 -->
