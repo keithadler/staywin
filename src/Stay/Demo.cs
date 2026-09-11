@@ -25,6 +25,7 @@ public static class Demo
             Disk = 238L * 1024 * 1024 * 1024,
         };
         pc.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
+        pc.Licences_.Add(("Windows(R), Windows10ESUConsumer", "Extended Security Updates", true));
         pc.Programs.Add("Microsoft 365");
 
         // A slow morning on a tired laptop: a 94 second start, four things holding it up, a disk nearly full.
@@ -42,14 +43,36 @@ public static class Demo
         pace.Reclaimables.Add(new Reclaimable("Windows Update's downloaded installers", 6L << 30, "Disk Cleanup, ticking \"Windows Update Cleanup\". Windows downloads them again if it needs them."));
         pace.Reclaimables.Add(new Reclaimable("Temporary files your programs made", 2L << 30, "Storage settings, under Temporary files."));
 
+        // Enrolled in ESU, and yet nothing has arrived since February. This is the case the app exists to catch,
+        // so it is the one the screenshots show.
+        var watch = new FakeProtection
+        {
+            Installed = new DateOnly(2026, 2, 11),
+            Waiting = true,
+            Checked = new DateTimeOffset(2026, 9, 9, 7, 12, 0, TimeSpan.Zero),
+            Watching = new Guarded("Microsoft Defender", true, true, 0, true),
+        };
+
+        var apps = new FakePackages(new[]
+        {
+            Pkg("Microsoft.BingWeather", "Weather"),
+            Pkg("Microsoft.MicrosoftSolitaireCollection", "Solitaire Collection"),
+            Pkg("Clipchamp.Clipchamp", "Clipchamp"),
+            Pkg("Microsoft.BingNews", "News"),
+            Pkg("Microsoft.Todos", "To Do"),
+            Pkg("Microsoft.WindowsCalculator", "Calculator"),
+            Pkg("Microsoft.Windows.Photos", "Photos"),
+            Pkg("PineStreetHoldings.Portal", "Pine Street Holdings Portal", "Pine Street Holdings"),
+        });
+
         var store = new MemoryReceiptStore();
-        var engine = new Core.Engine(registry, pc, pace, store, Cli.Version, "SAMS-LAPTOP", "sam")
+        var engine = new Core.Engine(registry, pc, pace, watch, apps, store, Cli.Version, "SAMS-LAPTOP", "sam")
         {
             Now = () => new DateTimeOffset(2026, 9, 10, 9, 14, 0, TimeSpan.Zero),
         };
 
         // One receipt from last week, so the Receipts pane shows what one looks like rather than an empty page.
-        var earlier = new Core.Engine(registry, pc, pace, store, Cli.Version, "SAMS-LAPTOP", "sam")
+        var earlier = new Core.Engine(registry, pc, pace, watch, apps, store, Cli.Version, "SAMS-LAPTOP", "sam")
         {
             Now = () => new DateTimeOffset(2026, 9, 3, 16, 20, 0, TimeSpan.Zero),
         };
@@ -57,4 +80,8 @@ public static class Demo
 
         return engine;
     }
+
+    private static InstalledApp Pkg(string name, string display, string publisher = "Microsoft Corporation")
+        => new($"{name}_8wekyb3d8bbwe", name, $"{name}_1.0.0.0_neutral__8wekyb3d8bbwe", display, publisher,
+               "1.0.0.0", IsFramework: false, IsSystem: false);
 }

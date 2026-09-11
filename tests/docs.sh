@@ -30,6 +30,13 @@ junk=$(grep -cE '^        new\("' src/Stay.Core/Junk.cs)
 [ "$junk" = 34 ]; say $? "the junk list holds 34 switches (found $junk)"
 grep -q "34 advertising" README.md; say $? "and the README says 34"
 
+grep -q "is it actually working" README.md
+say $? "the README explains the difference between entitled and receiving"
+grep -q "only" README.md && grep -q "NeedsStore" src/Stay.Core/Receipt.cs
+say $? "and names app removal as the one thing a receipt cannot undo"
+grep -q "cannot be undone by a receipt" src/Stay/MainWindow.xaml.cs
+say $? "which the window says before the button, not after"
+
 grep -q "does not make Windows 10 fast" README.md
 say $? "the README says out loud that it is not a speed cure"
 grep -q "would do more for it than everything below" src/Stay.Core/Speed.cs

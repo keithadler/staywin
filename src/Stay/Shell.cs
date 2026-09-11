@@ -103,6 +103,22 @@ public sealed class RequirementRow
 }
 
 /// <summary>One program that starts with the PC, on the speed pane.</summary>
+/// <summary>One thing wrong with how this PC is being looked after.</summary>
+public sealed class WrongRow
+{
+    public WrongRow(Wrong wrong)
+    {
+        What = wrong.What; Why = wrong.Why; Fix = wrong.Fix;
+        StateKey = wrong.Serious ? "Loud" : "Partly";
+        StateWord = wrong.Serious ? "needs doing" : "worth knowing";
+    }
+    public string What { get; }
+    public string Why { get; }
+    public string Fix { get; }
+    public string StateKey { get; }
+    public string StateWord { get; }
+}
+
 public sealed class StartupRow : INotifyPropertyChanged
 {
     public StartupEntry Entry { get; }
@@ -117,6 +133,28 @@ public sealed class StartupRow : INotifyPropertyChanged
     public bool CanSelect => Entry.Enabled;
     public string StateKey => !Entry.Enabled ? "Shut" : Entry.Milliseconds is > 2000 ? "Loud" : "Partly";
     public string StateWord => !Entry.Enabled ? "already off" : Entry.Milliseconds is null ? "starts with the PC" : Entry.Cost;
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+/// <summary>One bundled app on the junk pane.</summary>
+public sealed class AppRow : INotifyPropertyChanged
+{
+    public AppState App { get; }
+    private bool _selected;
+    public bool Selected { get => _selected; set { _selected = value; PropertyChanged?.Invoke(this, new(nameof(Selected))); } }
+
+    public AppRow(AppState app, bool selected) { App = app; _selected = selected; }
+
+    public string Title => App.Title;
+    public string What => App.What;
+    public string Publisher => App.App.Publisher;
+    public string StateKey => App.Advice switch { AppAdvice.Junk => "Loud", AppAdvice.Keep => "Shut", _ => "Partly" };
+    public string StateWord => App.Advice switch
+    {
+        AppAdvice.Junk => "came with the PC",
+        AppAdvice.Keep => "worth keeping",
+        _ => "your call",
+    };
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -169,6 +207,8 @@ public sealed class Shell : INotifyPropertyChanged
         Speeds = new ObservableCollection<GuardRow>();
         Startup = new ObservableCollection<StartupRow>();
         Space = new ObservableCollection<SpaceRow>();
+        Wrong = new ObservableCollection<WrongRow>();
+        Apps = new ObservableCollection<AppRow>();
         Components = new ObservableCollection<ComponentRow>();
         Requirements = new ObservableCollection<RequirementRow>();
         Receipts = new ObservableCollection<ReceiptRow>();
@@ -180,6 +220,8 @@ public sealed class Shell : INotifyPropertyChanged
     public ObservableCollection<GuardRow> Speeds { get; }
     public ObservableCollection<StartupRow> Startup { get; }
     public ObservableCollection<SpaceRow> Space { get; }
+    public ObservableCollection<WrongRow> Wrong { get; }
+    public ObservableCollection<AppRow> Apps { get; }
     public ObservableCollection<ComponentRow> Components { get; }
     public ObservableCollection<RequirementRow> Requirements { get; }
     public ObservableCollection<ReceiptRow> Receipts { get; }
@@ -215,6 +257,12 @@ public sealed class Shell : INotifyPropertyChanged
         Requirements.Clear();
         foreach (var r in _standing.Eleven.Requirements) Requirements.Add(new RequirementRow(r));
 
+        Apps.Clear();
+        foreach (var app in _standing.Apps) Apps.Add(new AppRow(app, app.Suggested));
+
+        Wrong.Clear();
+        foreach (var wrong in _standing.Wrong) Wrong.Add(new WrongRow(wrong));
+
         Receipts.Clear();
         foreach (var r in _engine.Store.List()) Receipts.Add(new ReceiptRow(r));
 
@@ -222,7 +270,9 @@ public sealed class Shell : INotifyPropertyChanged
                                      nameof(OpenCount), nameof(OpenSummary), nameof(ElevenSummary), nameof(WindowsLine),
                                      nameof(HasReceipts), nameof(ByHand), nameof(DatesChecked),
                                      nameof(BootLine), nameof(DiskLine), nameof(Truth), nameof(StartupSummary),
-                                     nameof(SpaceSummary), nameof(HasSpace), nameof(JunkSummary) })
+                                     nameof(SpaceSummary), nameof(HasSpace), nameof(JunkSummary),
+                                     nameof(HasWrong), nameof(WrongSummary), nameof(LastUpdateLine),
+                                     nameof(AppsSummary), nameof(HasApps) })
             PropertyChanged?.Invoke(this, new(name));
     }
 
@@ -234,9 +284,21 @@ public sealed class Shell : INotifyPropertyChanged
 
     public string Headline => _standing.Windows.IsWindows11
         ? "This is Windows 11."
-        : _standing.Patched
+        : _standing.Working
             ? "Windows on this PC is still getting security updates."
-            : "Windows on this PC is not getting security updates.";
+            : _standing.Patched
+                ? "This PC is entitled to security updates, but something is wrong."
+                : "Windows on this PC is not getting security updates.";
+
+    public bool HasWrong => Wrong.Count > 0;
+
+    public string WrongSummary => Wrong.Count == 1
+        ? "One thing is stopping this PC being looked after properly."
+        : $"{Wrong.Count} things are stopping this PC being looked after properly.";
+
+    public string LastUpdateLine => _standing.Watch.LastUpdate is { } landed
+        ? $"The last update actually installed on {landed:d MMMM yyyy}, {Lifecycle.HowLong(landed, _standing.Today)}."
+        : "Windows has no record of an update ever installing on this PC.";
 
     public string HeadlineDetail
     {
@@ -327,11 +389,30 @@ public sealed class Shell : INotifyPropertyChanged
 
     public Plan PlanJunk() => _engine.PlanFor(Junk.Where(g => g.Selected && g.CanSelect).Select(g => g.Status.Guard));
 
+    public IReadOnlyList<AppState> AppsToRemove() => Apps.Where(a => a.Selected).Select(a => a.App).ToList();
+
+    public bool HasApps => Apps.Count > 0;
+    public string AppsSummary
+    {
+        get
+        {
+            int junk = Apps.Count(a => a.App.Suggested);
+            return junk == 0
+                ? "None of the apps on this PC are ones the list calls junk."
+                : $"{junk} of the {Apps.Count} apps on this PC came with it and are the kind most people remove. "
+                + "Removing one is the only thing this app does that a receipt cannot undo — the receipt keeps a "
+                + "link to put it back from the Store instead.";
+        }
+    }
+
     // ---------- doing things ----------
 
     public Plan PlanSelected() => _engine.PlanFor(Guards.Where(g => g.Selected && g.CanSelect).Select(g => g.Status.Guard));
 
     public Receipt Apply(Plan plan, bool restorePoint) => _engine.Apply(plan, restorePoint);
+
+    public Receipt Apply(Plan plan, IReadOnlyList<AppState> removing, bool restorePoint)
+        => _engine.Apply(plan, removing, restorePoint);
 
     public UndoResult Undo(Receipt receipt) => _engine.Undo(receipt);
 

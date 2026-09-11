@@ -15,6 +15,12 @@ First version.
   does and what you lose, and every change recorded in a receipt that puts it back exactly.
 - Four more worth doing that the app will not do for you, with what to type, because a change it could not undo
   is not one it should make.
+- Whether this PC is really being looked after, as opposed to entitled to be: the day an update last actually
+  installed, a restart left waiting, the update service switched off, no antivirus, stale definitions, the
+  firewall off. Each one says why it matters and what to do. An ESU enrolment that has stopped delivering is
+  worse than none, because the person believes they are covered.
+- The bundled apps, listed and removable — the one thing here a receipt cannot undo, which the app says before
+  it does it, keeping a Store link for each.
 - Make it faster: how long this PC really took to start and what each startup program cost, read from Windows'
   own performance log; five switches that genuinely help an old machine; and what is holding disk space, without
   deleting anything, because deleting is the one thing a receipt cannot undo.

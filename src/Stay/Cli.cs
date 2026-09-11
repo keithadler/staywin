@@ -24,7 +24,7 @@ public static class Cli
         finally { Console.Out.WriteLine(); }
     }
 
-    public static Engine MakeEngine() => new(new WinRegistry(), new WinMachine(), new WinPerformance(), new FileReceiptStore(),
+    public static Engine MakeEngine() => new(new WinRegistry(), new WinMachine(), new WinPerformance(), new WinProtection(), new WinPackages(), new FileReceiptStore(),
                                              Version, Environment.MachineName, Environment.UserName);
 
     private static bool Flag(string[] args, string name) => args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
@@ -94,11 +94,15 @@ public static class Cli
                 windows = new { name = w.Name, w.Caption, w.Edition, w.Release, w.Version, w.Build, w.Architecture, w.IsWindows10, w.IsLtsc },
                 esu = new { state = standing.Esu.State.ToString(), standing.Esu.Detail, standing.Esu.Until },
                 patched = standing.Patched,
+                working = standing.Working,
+                lastUpdate = standing.Watch.LastUpdate,
+                restartPending = standing.Watch.RestartPending,
+                wrong = standing.Wrong,
                 openGuards = standing.Open,
                 elevenReady = standing.Eleven.Ready,
                 datesChecked = Lifecycle.Checked,
             });
-            return standing.Patched ? 0 : 1;
+            return standing.Working ? 0 : 1;
         }
 
         o.WriteLine($"{w.Name} {w.Release}  ({w.Version}, {w.Architecture})");
@@ -111,10 +115,15 @@ public static class Cli
             o.WriteLine($"This is an older Windows 10 than 22H2. Nothing, including ESU, covers it. Update to 22H2 first.");
 
         o.WriteLine();
-        o.WriteLine(standing.Patched
+        o.WriteLine(standing.Working
             ? "Windows on this PC is still getting security updates."
-            : "Windows on this PC is NOT getting security updates.");
+            : standing.Patched
+                ? "Windows on this PC is entitled to security updates, but something is wrong."
+                : "Windows on this PC is NOT getting security updates.");
         o.WriteLine($"  {standing.Esu.Detail}");
+        if (standing.Watch.LastUpdate is { } landed)
+            o.WriteLine($"  The last update actually installed on {landed:d MMMM yyyy}, "
+                        + $"{Lifecycle.HowLong(landed, standing.Today)}.");
 
         var windows = standing.Components.First(c => c.Id is "windows" or "ltsc");
         if (windows.Ends is { } ends)
@@ -130,6 +139,18 @@ public static class Cli
             o.WriteLine("  Settings > Update & Security > Windows Update, then \"Enroll now\".");
         }
 
+        if (standing.Wrong.Count > 0)
+        {
+            o.WriteLine();
+            o.WriteLine("WHAT IS WRONG");
+            foreach (var wrong in standing.Wrong)
+            {
+                o.WriteLine($"  {(wrong.Serious ? "!" : "-")} {wrong.What}");
+                o.WriteLine($"      {wrong.Why}");
+                o.WriteLine($"      {wrong.Fix}");
+            }
+        }
+
         o.WriteLine();
         o.WriteLine(standing.Open == 0
             ? "Nothing is left open that this app would shut."
@@ -137,7 +158,7 @@ public static class Cli
         o.WriteLine($"Windows 11: {(standing.Eleven.Ready ? "this PC could take it" : $"{standing.Eleven.Failing.Count} check(s) fail. Run: stay eleven")}");
         o.WriteLine();
         o.WriteLine($"Dates last checked against Microsoft's pages on {Lifecycle.Checked:d MMMM yyyy}.");
-        return standing.Patched && standing.Open == 0 ? 0 : 1;
+        return standing.Working && standing.Open == 0 ? 0 : 1;
     }
 
     private static int Updates(TextWriter o, bool json)
@@ -358,12 +379,34 @@ public static class Cli
         var engine = MakeEngine();
         var standing = engine.Scan();
 
+        if (Flag(args, "--apps"))
+        {
+            var removing = engine.SuggestedApps(standing);
+            if (removing.Count == 0) { o.WriteLine("None of the apps on this PC are ones the list calls junk."); return 0; }
+            if (Flag(args, "--dry-run"))
+            {
+                o.WriteLine($"Would remove {removing.Count} app(s) and write a receipt:");
+                foreach (var app in removing) o.WriteLine($"  {app.Title}  ({app.App.FamilyName})");
+                return 0;
+            }
+            o.WriteLine("Removing an app is the only thing this app does that a receipt cannot undo. The receipt");
+            o.WriteLine("keeps a Store link for each one so you can install it again.");
+            var done = engine.Apply(new Plan(Array.Empty<Guard>(), Array.Empty<RegChange>()), removing, false);
+            o.WriteLine($"Removed {done.Changed} app(s). Receipt {done.Id}.");
+            foreach (var app in done.Apps.Where(a => a.Failed)) o.WriteLine($"  failed: {app.Title}: {app.Error}");
+            return done.Failed > 0 ? 2 : 0;
+        }
+
         if (Flag(args, "--all"))
             return Do(engine, engine.PlanFor(engine.SuggestedJunk(standing)), args, o, json);
 
         if (json)
         {
-            Json(o, standing.Junk.Select(g => new { g.Guard.Id, g.Guard.Group, g.Guard.Title, state = g.State.ToString() }));
+            Json(o, new
+            {
+                switches = standing.Junk.Select(g => new { g.Guard.Id, g.Guard.Group, g.Guard.Title, state = g.State.ToString() }),
+                apps = standing.Apps.Select(a => new { a.Title, a.App.FamilyName, advice = a.Advice.ToString(), a.Suggested }),
+            });
             return standing.Loud > 0 ? 1 : 0;
         }
 
@@ -374,8 +417,19 @@ public static class Cli
                 o.WriteLine($"  {(status.NeedsDoing ? "ON  " : "off ")} {status.Guard.Id,-24} {status.Guard.Title}");
             o.WriteLine();
         }
-        o.WriteLine($"{standing.Loud} still on. Turn them all off: stay junk --all");
-        return standing.Loud > 0 ? 1 : 0;
+        int junkApps = standing.Apps.Count(a => a.Suggested);
+        if (standing.Apps.Count > 0)
+        {
+            o.WriteLine("APPS YOU DID NOT ASK FOR");
+            foreach (var app in standing.Apps.Take(40))
+                o.WriteLine($"  {(app.Suggested ? "junk  " : "      ")} {app.Title}");
+            if (standing.Apps.Count > 40) o.WriteLine($"  ... and {standing.Apps.Count - 40} more");
+            o.WriteLine();
+        }
+
+        o.WriteLine($"{standing.Loud} switches still on. Turn them all off: stay junk --all");
+        if (junkApps > 0) o.WriteLine($"{junkApps} bundled apps the list calls junk. Remove them: stay junk --apps");
+        return standing.Loud > 0 || junkApps > 0 ? 1 : 0;
     }
 
     /// <summary>The one path that changes anything: dry run, restore point, apply, receipt. Every verb goes through it.</summary>
@@ -459,6 +513,9 @@ public static class Cli
                 windows = standing.Windows,
                 esu = new { state = standing.Esu.State.ToString(), standing.Esu.Detail },
                 patched = standing.Patched,
+                working = standing.Working,
+                watch = standing.Watch,
+                wrong = standing.Wrong,
                 components = standing.Components,
                 eleven = new { standing.Eleven.Ready, requirements = standing.Eleven.Requirements },
                 guards = standing.Guards.Where(g => engine.Applies(g.Guard, standing.Windows))
@@ -493,6 +550,7 @@ public static class Cli
         stay speed --stop OneDrive   stop one program starting with the PC
         stay junk                    the advertising, AI hooks and telemetry that are still on
         stay junk --all              turn all of it off, with a receipt
+        stay junk --apps             remove the bundled apps the list calls junk
         stay harden --all            shut everything it suggests, with a receipt
         stay harden --id rdp,smb1    shut named ones
         stay harden --all --dry-run  show the exact changes and make none

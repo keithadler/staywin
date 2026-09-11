@@ -43,6 +43,13 @@ switched on. This app reads it off the machine and says so in one sentence.
 **Where you stand.** What Windows this is, whether it is being patched at all, and until when. Whether ESU is
 enrolled — read from the licences Windows itself holds, not from a registry value somebody could have set by hand.
 
+And then the question nothing else asks: **is it actually working?** Being entitled to updates and receiving them
+are different things, and they come apart more often than anybody expects. Stay reads the day an update really
+installed, whether one is sitting waiting for a restart, whether the update service was switched off years ago by
+a tuning guide, whether anything is watching for malware, how old the virus definitions are and whether the
+firewall is on. *Enrolled in Extended Security Updates, but the last update landed 7 months ago* is a sentence
+somebody needs to see, and no part of Windows will say it.
+
 **Still being patched.** Every piece of this PC that still gets security updates, the day each one stops, and
 where that date came from, so you can check it rather than trust it.
 
@@ -74,6 +81,10 @@ in Settings, Copilot, Recall, Click to Do, diagnostic data, activity history, th
 Edge running when it is closed. Somebody on an old PC should not have to find a second app to turn off a Start
 menu advert.
 
+It also lists the bundled apps — Solitaire, Clipchamp, the Bing apps, Copilot — and will remove the ones the list
+calls junk. That is the **only** thing the app does that a receipt cannot undo, it says so before it does it, and
+the receipt keeps a Store link for each so you can put it back.
+
 **Receipts.** Every change this app has ever made on this PC, with the old values, and a button that restores them.
 
 ## What it cannot do
@@ -84,7 +95,9 @@ menu advert.
   asked for and opens the page.
 - **It will not get round Windows 11's hardware checks**, and will not tell you how. Windows 11 on an unsupported
   PC may stop receiving updates, which is the exact problem this app exists to deal with.
-- **It does not remove or install anything**, does not touch your files, and makes no network request of any kind.
+- **It does not touch your files** and makes no network request of any kind.
+- **It removes nothing without saying so.** The bundled apps are the one exception to the receipt promise, and
+  the app tells you that before the button, not after.
 
 ## The console twin
 
@@ -102,6 +115,7 @@ stay speed --all             do everything it suggests for speed
 stay speed --stop OneDrive   stop one program starting with the PC
 stay junk                    the advertising, AI hooks and telemetry still on
 stay junk --all              turn all of it off
+stay junk --apps             remove the bundled apps the list calls junk
 stay receipts                every change this app has made on this PC
 stay undo <id>               put a receipt's changes back exactly
 stay report --json           all of it, for a fleet or for your own records

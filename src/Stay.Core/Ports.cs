@@ -54,6 +54,33 @@ public interface IPerformance
     IReadOnlyList<Reclaimable> Space();
 }
 
+/// <summary>Whether this PC is really being looked after: what arrived, and what is watching.</summary>
+public interface IProtection
+{
+    /// <summary>The day the most recent update actually installed. Null when Windows has no record of one.</summary>
+    DateOnly? LastUpdate();
+
+    /// <summary>An update installed and waiting for a restart.</summary>
+    bool RestartPending();
+
+    /// <summary>Whether the Windows Update service could run at all.</summary>
+    bool UpdatesReachable();
+
+    /// <summary>When Windows last managed to ask for updates.</summary>
+    DateTimeOffset? LastChecked();
+
+    /// <summary>The antivirus and the firewall.</summary>
+    Guarded Guarded();
+}
+
+/// <summary>Installed app packages. The app supplies the real one; tests supply a fake.</summary>
+public interface IPackages
+{
+    IReadOnlyList<InstalledApp> List();
+    /// <summary>Removes the package for every user and stops Windows adding it to new accounts.</summary>
+    void Remove(InstalledApp app);
+}
+
 /// <summary>Where receipts live.</summary>
 public interface IReceiptStore
 {
@@ -128,6 +155,36 @@ public sealed class FakePerformance : IPerformance
     public IReadOnlyList<StartupEntry> Startup() => Starters.ToList();
     public SystemDisk Disk() => TheDisk;
     public IReadOnlyList<Reclaimable> Space() => Reclaimables.ToList();
+}
+
+/// <summary>A made-up PC that is being looked after properly, which tests then break in one way at a time.</summary>
+public sealed class FakeProtection : IProtection
+{
+    public DateOnly? Installed { get; set; } = new(2026, 9, 9);
+    public bool Waiting { get; set; }
+    public bool Reachable { get; set; } = true;
+    public DateTimeOffset? Checked { get; set; } = new DateTimeOffset(2026, 9, 10, 6, 0, 0, TimeSpan.Zero);
+    public Guarded Watching { get; set; } = new("Microsoft Defender", true, true, 0, true);
+
+    public DateOnly? LastUpdate() => Installed;
+    public bool RestartPending() => Waiting;
+    public bool UpdatesReachable() => Reachable;
+    public DateTimeOffset? LastChecked() => Checked;
+    public Guarded Guarded() => Watching;
+}
+
+public sealed class FakePackages : IPackages
+{
+    private readonly List<InstalledApp> _apps;
+    public List<string> Removed { get; } = new();
+    public FakePackages(IEnumerable<InstalledApp> apps) => _apps = apps.ToList();
+    public IReadOnlyList<InstalledApp> List() => _apps.ToList();
+    public void Remove(InstalledApp app)
+    {
+        if (app.Name == "Fail.OnPurpose") throw new InvalidOperationException("removal refused by the fake");
+        _apps.RemoveAll(a => a.FamilyName == app.FamilyName);
+        Removed.Add(app.FamilyName);
+    }
 }
 
 public sealed class MemoryReceiptStore : IReceiptStore

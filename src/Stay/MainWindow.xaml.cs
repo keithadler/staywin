@@ -49,12 +49,15 @@ public partial class MainWindow : Window
     private void UpdateBar()
     {
         var plan = Planned();
-        int guards = plan.Guards.Count;
-        ApplyButton.IsEnabled = !plan.IsEmpty;
-        BarText.Text = plan.IsEmpty
-            ? "Nothing ticked that is not already shut."
-            : $"{guards} ticked, {plan.Registry.Count} value{(plan.Registry.Count == 1 ? "" : "s")} to change."
-              + (plan.NeedsRestart ? " Some of it takes effect after a restart." : "");
+        int apps = Panes.SelectedIndex == 5 ? _shell.AppsToRemove().Count : 0;
+        ApplyButton.IsEnabled = !plan.IsEmpty || apps > 0;
+
+        if (plan.IsEmpty && apps == 0) { BarText.Text = "Nothing ticked that is not already done."; return; }
+
+        var said = $"{plan.Guards.Count} ticked, {plan.Registry.Count} value{(plan.Registry.Count == 1 ? "" : "s")} to change.";
+        if (apps > 0) said += $" {apps} app{(apps == 1 ? "" : "s")} to remove, which cannot be undone by a receipt.";
+        if (plan.NeedsRestart) said += " Some of it takes effect after a restart.";
+        BarText.Text = said;
     }
 
     private void OpenUpdate(object sender, RoutedEventArgs e) => Shell.Open("ms-settings:windowsupdate");
@@ -73,12 +76,19 @@ public partial class MainWindow : Window
     private void ApplyClicked(object sender, RoutedEventArgs e)
     {
         var plan = Planned();
-        if (plan.IsEmpty) return;
+        var removing = Panes.SelectedIndex == 5 ? _shell.AppsToRemove() : Array.Empty<AppState>();
+        if (plan.IsEmpty && removing.Count == 0) return;
 
-        var asked = MessageBox.Show(
-            $"Change {plan.Registry.Count} value(s)?\n\n"
-            + "A receipt is written first, holding what every value was before, so all of it can be put back.",
-            "Stay for Windows 10", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        var question = $"Change {plan.Registry.Count} value(s)?\n\n"
+            + "A receipt is written first, holding what every value was before, so all of it can be put back.";
+        if (removing.Count > 0)
+            question = $"Change {plan.Registry.Count} value(s) and remove {removing.Count} app(s)?\n\n"
+                + "The values go on a receipt and can all be put back. The apps cannot: removing one is the only "
+                + "thing this app does that a receipt will not undo. The receipt keeps a Store link for each so "
+                + "you can install it again.\n\n"
+                + string.Join("\n", removing.Select(a => "  " + a.Title));
+
+        var asked = MessageBox.Show(question, "Stay for Windows 10", MessageBoxButton.OKCancel, MessageBoxImage.Question);
         if (asked != MessageBoxResult.OK) return;
 
         bool point = WantRestorePoint.IsChecked == true;
@@ -92,7 +102,9 @@ public partial class MainWindow : Window
             if (!ok) Say($"No restore point: {reason}\n\nThe receipt still records every change, so this is still undoable.");
         }
 
-        var receipt = _shell.Apply(plan, made);
+        Cursor = removing.Count > 0 ? System.Windows.Input.Cursors.Wait : Cursor;
+        var receipt = _shell.Apply(plan, removing, made);
+        Cursor = null;
         _shell.Rescan();
         ShowPane(Panes.SelectedIndex);
 
@@ -102,6 +114,7 @@ public partial class MainWindow : Window
                   + "\"Run as administrator\".";
         if (plan.NeedsRestart) said += "\n\nSome of it takes effect after a restart.";
         if (plan.Guards.Any(g => g.NeedsSignOut)) said += "\n\nSome of it takes effect after you sign out and back in.";
+        if (receipt.NeedsStore) said += "\n\nThe apps that were removed are listed on the receipt with a Store link each.";
         said += $"\n\nReceipt {receipt.Id}. It is under Receipts, with a button that puts it all back.";
         Say(said);
     }

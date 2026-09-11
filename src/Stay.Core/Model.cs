@@ -149,6 +149,32 @@ public sealed record GuardStatus(Guard Guard, GuardState State, IReadOnlyList<Re
 }
 
 /// <summary>Everything the app found, in one answer.</summary>
+/// <summary>What the engine knows about a bundled app, from the catalogue.</summary>
+public enum AppAdvice { Junk, Optional, Keep }
+
+public sealed record AppEntry(string Name, string Title, string What, AppAdvice Advice);
+
+/// <summary>An app package installed on this PC.</summary>
+public sealed record InstalledApp(
+    string FamilyName,
+    string Name,
+    string FullName,
+    string DisplayName,
+    string Publisher,
+    string Version,
+    bool IsFramework,
+    bool IsSystem);
+
+public sealed record AppState(InstalledApp App, AppEntry? Entry)
+{
+    public string Title => Entry?.Title ?? (string.IsNullOrWhiteSpace(App.DisplayName) ? App.Name : App.DisplayName);
+    public string What => Entry?.What ?? "Not in the list this app carries. It came with the PC or was installed "
+                                       + "later; leave it unless you know what it is.";
+    public AppAdvice Advice => Entry?.Advice ?? AppAdvice.Optional;
+    public bool Suggested => Advice == AppAdvice.Junk;
+    public string StoreLink => $"ms-windows-store://pdp/?PFN={App.FamilyName}";
+}
+
 public sealed record Standing(
     WindowsBuild Windows,
     Esu Esu,
@@ -156,14 +182,25 @@ public sealed record Standing(
     Eleven Eleven,
     IReadOnlyList<GuardStatus> Guards,
     IReadOnlyList<GuardStatus> Junk,
+    IReadOnlyList<AppState> Apps,
+    Watch Watch,
     DateOnly Today)
 {
     public int Open => Guards.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
     public int Closed => Guards.Count(g => !g.NeedsDoing);
     public int Loud => Junk.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
 
-    /// <summary>The one sentence at the top of the window: is this PC being patched at all?</summary>
+    /// <summary>What is wrong with how this PC is being looked after, worst first.</summary>
+    public IReadOnlyList<Wrong> Wrong => Watching.WhatIsWrong(Watch, Esu, Today, Windows.IsWindows10);
+
+    /// <summary>Entitled to updates, which is not the same as getting them; see <see cref="Working"/>.</summary>
     public bool Patched => Windows.IsWindows11
         || Esu.State == EsuState.Enrolled
         || (Windows.IsLtsc && Components.FirstOrDefault(c => c.Id == "ltsc") is { } l && !l.Over(Today));
+
+    /// <summary>
+    /// Entitled to updates and actually receiving them. The two come apart more often than anybody expects, and
+    /// the gap between them is the most useful thing this app can tell somebody.
+    /// </summary>
+    public bool Working => Patched && !Wrong.Any(w => w.Serious);
 }

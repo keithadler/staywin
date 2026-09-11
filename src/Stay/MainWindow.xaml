@@ -110,6 +110,22 @@
             </Border>
         </DataTemplate>
 
+        <DataTemplate x:Key="WrongTemplate" DataType="{x:Type local:WrongRow}">
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding What}" Style="{StaticResource H2}" TextWrapping="Wrap" MaxWidth="1000"/>
+                        <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                            <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Why}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Fix}" Margin="0,6,0,0" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="StartupTemplate" DataType="{x:Type local:StartupRow}">
             <Border Style="{StaticResource CardStyle}" Padding="16,10">
                 <Grid>
@@ -128,6 +144,29 @@
                             </Border>
                         </StackPanel>
                         <TextBlock Text="{Binding Command}" Style="{StaticResource Mono}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="AppTemplate" DataType="{x:Type local:AppRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Selected}" VerticalAlignment="Top" Margin="0,4,12,0"/>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"/>
+                            <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                                <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding What}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Publisher}" Style="{StaticResource Small}" Margin="0,3,0,0"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -199,6 +238,14 @@
                         <TextBlock Text="{Binding Headline}" Style="{StaticResource H1}" TextWrapping="Wrap"/>
                         <TextBlock Text="{Binding HeadlineDetail}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         <TextBlock Text="{Binding WindowsLine}" Style="{StaticResource Small}" Margin="0,10,0,0"/>
+                        <TextBlock Text="{Binding LastUpdateLine}" Style="{StaticResource Small}" Margin="0,2,0,0"/>
+
+                        <StackPanel Visibility="{Binding HasWrong, Converter={StaticResource Vis}}" Margin="0,18,0,0">
+                            <TextBlock Text="{Binding WrongSummary}" Style="{StaticResource H1}" FontSize="21"/>
+                            <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,10"
+                                       Text="Being entitled to updates and actually receiving them are two different things, and they come apart more often than anybody expects."/>
+                            <ItemsControl ItemsSource="{Binding Wrong}" ItemTemplate="{StaticResource WrongTemplate}"/>
+                        </StackPanel>
 
                         <Border Style="{StaticResource CardStyle}" Margin="0,18,0,0"
                                 Visibility="{Binding EsuOffered, Converter={StaticResource Vis}}">
@@ -225,7 +272,7 @@
                                 <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
                                            Text="It cannot patch Windows, and nothing can except Microsoft. It cannot enrol you in Extended Security Updates; that is a Microsoft account flow in Settings. It will not get round Windows 11's hardware checks and will not tell you how."/>
                                 <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
-                                           Text="What it can do is tell you exactly where this PC stands, what is still being patched and until when, and shut the doors that are worth shutting on a machine nobody is fixing any more — each with a receipt that puts it back."/>
+                                           Text="What it can do is tell you exactly where this PC stands and whether the updates it is entitled to are really arriving; shut the doors worth shutting on a machine nobody is fixing; show what is making it slow, measured rather than guessed; and turn off the advertising, the AI hooks and the telemetry. Every change is written to a receipt first, and one button puts any of it back."/>
                             </StackPanel>
                         </Border>
 
@@ -305,6 +352,12 @@
                         <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,14"
                                    Text="The advertising, the AI hooks, the telemetry and the noise. Every one is a registry value with a receipt: nothing is removed and nothing here cannot be put back."/>
                         <ItemsControl ItemsSource="{Binding Junk}" ItemTemplate="{StaticResource GuardTemplate}"/>
+
+                        <StackPanel Visibility="{Binding HasApps, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Apps you did not ask for" Style="{StaticResource H1}" FontSize="21" Margin="0,22,0,0"/>
+                            <TextBlock Text="{Binding AppsSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                            <ItemsControl ItemsSource="{Binding Apps}" ItemTemplate="{StaticResource AppTemplate}"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- receipts -->

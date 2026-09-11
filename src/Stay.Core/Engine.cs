@@ -19,17 +19,19 @@ public sealed class Engine
     private readonly IRegistry _reg;
     private readonly IMachine _machine;
     private readonly IPerformance _pace;
+    private readonly IProtection _watch;
+    private readonly IPackages _packages;
     private readonly IReceiptStore _store;
     private readonly string _version, _host, _user;
 
     public Func<DateTimeOffset> Now { get; set; } = () => DateTimeOffset.Now;
     public IReceiptStore Store => _store;
 
-    public Engine(IRegistry registry, IMachine machine, IPerformance performance, IReceiptStore store,
-                  string version, string host, string user)
+    public Engine(IRegistry registry, IMachine machine, IPerformance performance, IProtection protection,
+                  IPackages packages, IReceiptStore store, string version, string host, string user)
     {
-        _reg = registry; _machine = machine; _pace = performance; _store = store;
-        _version = version; _host = host; _user = user;
+        _reg = registry; _machine = machine; _pace = performance; _watch = protection; _packages = packages;
+        _store = store; _version = version; _host = host; _user = user;
     }
 
     private DateOnly Today => DateOnly.FromDateTime(Now().Date);
@@ -43,8 +45,35 @@ public sealed class Engine
         return new Standing(windows, esu, Components(windows, esu), Elevenable.Check(_machine),
                             Guards.All.Select(StatusOf).ToList(),
                             Junk.Items.Select(StatusOf).ToList(),
-                            Today);
+                            Bundled(), Watching(), Today);
     }
+
+    /// <summary>
+    /// The bundled apps on this PC, with what the catalogue says about each. Windows' own pieces are left out
+    /// unless the catalogue names them, because an app that offers to remove the Start menu is not a helpful one.
+    /// </summary>
+    public IReadOnlyList<AppState> Bundled()
+    {
+        var found = new List<AppState>();
+        IReadOnlyList<InstalledApp> installed;
+        try { installed = _packages.List(); } catch { return found; }
+
+        foreach (var app in installed)
+        {
+            if (app.IsFramework || Apps.Untouchable.Contains(app.Name)) continue;
+            var entry = Apps.Find(app.Name);
+            if (entry is null && app.IsSystem) continue;
+            found.Add(new AppState(app, entry));
+        }
+        return found.OrderByDescending(a => a.Suggested)
+                    .ThenBy(a => a.Title, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+    }
+
+    /// <summary>What actually reached this PC, as opposed to what it is entitled to.</summary>
+    public Watch Watching()
+        => new(_watch.LastUpdate(), _watch.RestartPending(), _watch.UpdatesReachable(),
+               _watch.LastChecked(), _watch.Guarded());
 
     /// <summary>
     /// Whether ESU is switched on, read from the licences Windows itself holds rather than from a registry value
@@ -231,6 +260,10 @@ public sealed class Engine
             .Select(g => g.Guard)
             .ToList();
 
+    /// <summary>The bundled apps the catalogue calls junk, which are the ones ticked for you.</summary>
+    public IReadOnlyList<AppState> SuggestedApps(Standing standing)
+        => standing.Apps.Where(a => a.Suggested).ToList();
+
     /// <summary>The same question of the advertising, AI and telemetry list.</summary>
     public IReadOnlyList<Guard> SuggestedJunk(Standing standing)
         => standing.Junk
@@ -254,7 +287,13 @@ public sealed class Engine
 
     // ---------- doing it, and undoing it ----------
 
-    public Receipt Apply(Plan plan, bool restorePoint = false)
+    public Receipt Apply(Plan plan, bool restorePoint = false) => Apply(plan, Array.Empty<AppState>(), restorePoint);
+
+    /// <summary>
+    /// Makes the changes and writes them down. Registry values first, then any apps: a removal cannot be undone
+    /// by putting a value back, so the receipt keeps the Store link that can.
+    /// </summary>
+    public Receipt Apply(Plan plan, IReadOnlyList<AppState> removing, bool restorePoint = false)
     {
         var done = new List<RegChange>();
         foreach (var change in plan.Registry)
@@ -270,8 +309,22 @@ public sealed class Engine
             }
         }
 
+        var removed = new List<AppRemoval>();
+        foreach (var app in removing)
+        {
+            try
+            {
+                _packages.Remove(app.App);
+                removed.Add(new AppRemoval(app.App.FamilyName, app.Title, app.StoreLink));
+            }
+            catch (Exception e)
+            {
+                removed.Add(new AppRemoval(app.App.FamilyName, app.Title, app.StoreLink, e.Message));
+            }
+        }
+
         var when = Now();
-        var receipt = new Receipt(Receipt.NewId(when), when, _host, _user, _version, done, restorePoint);
+        var receipt = new Receipt(Receipt.NewId(when), when, _host, _user, _version, done, removed, restorePoint);
         _store.Save(receipt);
         return receipt;
     }

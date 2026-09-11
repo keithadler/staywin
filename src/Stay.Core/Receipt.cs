@@ -19,6 +19,16 @@ public sealed record RegChange(
     [JsonIgnore] public string Path => $"{(User is null ? RegEdit.HiveName(Hive) : "HKU(" + (UserName ?? User) + ")")}\\{Key}\\{Name}";
 }
 
+/// <summary>One app removed. The app cannot put it back; the Store link can, so the receipt keeps it.</summary>
+public sealed record AppRemoval(
+    string FamilyName,
+    string Title,
+    string StoreLink,
+    string? Error = null)
+{
+    [JsonIgnore] public bool Failed => Error is not null;
+}
+
 /// <summary>Everything one press of Apply did, in the order it did it. Nothing is changed without one.</summary>
 public sealed record Receipt(
     string Id,
@@ -27,11 +37,15 @@ public sealed record Receipt(
     string User,
     string Version,
     IReadOnlyList<RegChange> Registry,
+    IReadOnlyList<AppRemoval> Apps,
     bool RestorePoint,
     DateTimeOffset? Undone = null)
 {
-    [JsonIgnore] public int Changed => Registry.Count(c => !c.Failed);
-    [JsonIgnore] public int Failed => Registry.Count(c => c.Failed);
+    [JsonIgnore] public int Changed => Registry.Count(c => !c.Failed) + Apps.Count(a => !a.Failed);
+    [JsonIgnore] public int Failed => Registry.Count(c => c.Failed) + Apps.Count(a => a.Failed);
+
+    /// <summary>Removals cannot be undone by putting a value back; the Store link is the only way.</summary>
+    [JsonIgnore] public bool NeedsStore => Apps.Any(a => !a.Failed);
 
     public static readonly JsonSerializerOptions Json = new()
     {

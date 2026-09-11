@@ -7,7 +7,7 @@ public static class SpeedSuite
         var reg = new FakeRegistry();
         var pc = new FakeMachine();
         var pace = new FakePerformance { TheDisk = new SystemDisk(disk, 18L << 30, 238L << 30) };
-        var engine = new Engine(reg, pc, pace, new MemoryReceiptStore(), "1.0.0", "PC", "sam")
+        var engine = new Engine(reg, pc, pace, new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
             { Now = () => new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero) };
         return (engine, reg, pace);
     }
@@ -22,7 +22,7 @@ public static class SpeedSuite
 
         var (ssd, _, ssdPace) = Bench(DiskKind.Solid);
         var pc = new FakeMachine { Memory = 4L << 30 };
-        var small = new Engine(new FakeRegistry(), pc, ssdPace, new MemoryReceiptStore(), "1.0.0", "PC", "sam");
+        var small = new Engine(new FakeRegistry(), pc, ssdPace, new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam");
         s.Check("on an SSD with little memory, the memory is named instead",
             small.Pace().Truth.Contains("memory"));
         s.Check("and on a PC where neither is the problem, it says the switches are worth doing",
@@ -31,11 +31,11 @@ public static class SpeedSuite
         // Windows reports usable memory, which is always a little under what is fitted. A PC with 8 GB in it
         // answers about 7.9, and a threshold written at exactly 8 told such a PC it was short of memory.
         var eight = new Engine(new FakeRegistry(), new FakeMachine { Memory = (long)(7.9 * (1L << 30)) },
-                               ssdPace, new MemoryReceiptStore(), "1.0.0", "PC", "sam");
+                               ssdPace, new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam");
         s.Check("a PC with 8 GB fitted is not told it is short of memory",
             !eight.Pace().Truth.Contains("more memory"));
         var four = new Engine(new FakeRegistry(), new FakeMachine { Memory = 4L << 30 },
-                              ssdPace, new MemoryReceiptStore(), "1.0.0", "PC", "sam");
+                              ssdPace, new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam");
         s.Check("a PC with 4 GB still is", four.Pace().Truth.Contains("more memory"));
 
         // ---- advice that depends on the disk ----
@@ -97,7 +97,7 @@ public static class SpeedSuite
         // ---- a binary value survives a receipt being written and read ----
         var value = RegValue.Bytes(Speed.OffBytes(new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero)));
         var change = new RegChange("startup:OneDrive", Hive.CurrentUser, "k", "OneDrive", RegValue.Absent, value);
-        var kept = Receipt.FromJson(new Receipt("x", DateTimeOffset.Now, "PC", "sam", "1.0.0", new[] { change }, false).ToJson());
+        var kept = Receipt.FromJson(new Receipt("x", DateTimeOffset.Now, "PC", "sam", "1.0.0", new[] { change }, Array.Empty<AppRemoval>(), false).ToJson());
         s.Equal("binary values come back out of a receipt unchanged", value, kept.Registry[0].After);
 
         // ---- space ----

@@ -7,10 +7,13 @@ public static class EngineSuite
         var reg = new FakeRegistry();
         var pc = new FakeMachine();
         pc.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
-        var engine = new Engine(reg, pc, new FakePerformance(), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
+        var engine = new Engine(reg, pc, new FakePerformance(), new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
             { Now = () => new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero) };
         return (engine, reg, pc);
     }
+
+    private static InstalledApp App(string name, string display, bool framework = false, bool system = false)
+        => new($"{name}_8wek", name, $"{name}_1.0_neutral__8wek", display, "Microsoft Corporation", "1.0", framework, system);
 
     public static Suite Run()
     {
@@ -101,6 +104,47 @@ public static class EngineSuite
         s.Equal("with no adapters, NetBIOS has nothing to write", 0, engine.Expand(Guards.Find("netbios")!).Count);
         s.Equal("and it reads as closed rather than open",
             GuardState.Closed, engine.StatusOf(Guards.Find("netbios")!).State);
+
+        // ---- bundled apps ----
+        var pkgs = new FakePackages(new[]
+        {
+            App("Microsoft.BingWeather", "Weather"),
+            App("Microsoft.WindowsCalculator", "Calculator"),
+            App("Fictional.Thing", "Something nobody has heard of"),
+            App("Microsoft.VCLibs.140.00", "VC Libraries", framework: true),
+            App("Microsoft.Windows.ShellExperienceHost", "Shell", system: true),
+        });
+        var withApps = new Engine(new FakeRegistry(), pc, new FakePerformance(), new FakeProtection(), pkgs,
+                                  new MemoryReceiptStore(), "1.0.0", "PC", "sam");
+        var listed = withApps.Bundled();
+        s.Check("a framework package is never offered", listed.All(a => a.App.Name != "Microsoft.VCLibs.140.00"));
+        s.Check("nor is one of Windows' own pieces the catalogue does not name",
+            listed.All(a => a.App.Name != "Microsoft.Windows.ShellExperienceHost"));
+        s.Check("the junk ones come first", listed[0].Suggested);
+        s.Check("an app nobody has heard of is not called junk",
+            listed.First(a => a.App.Name == "Fictional.Thing").Advice == AppAdvice.Optional);
+        s.Check("and it says so rather than guessing",
+            listed.First(a => a.App.Name == "Fictional.Thing").What.Contains("leave it unless"));
+        s.Check("an app worth keeping is not suggested",
+            !listed.First(a => a.App.Name == "Microsoft.WindowsCalculator").Suggested);
+
+        var standing2 = withApps.Scan();
+        var toRemove = withApps.SuggestedApps(standing2);
+        s.Equal("only the junk is suggested for removal", 1, toRemove.Count);
+
+        var removed = withApps.Apply(new Plan(Array.Empty<Guard>(), Array.Empty<RegChange>()), toRemove);
+        s.Equal("removing one counts as a change", 1, removed.Changed);
+        s.Check("the receipt keeps a way to put it back", removed.NeedsStore);
+        s.Check("which is a Store link", removed.Apps[0].StoreLink.StartsWith("ms-windows-store:"));
+        s.Check("and it really went", withApps.Bundled().All(a => a.App.Name != "Microsoft.BingWeather"));
+
+        var stubborn = new FakePackages(new[] { App("Fail.OnPurpose", "Will not go") });
+        var failing = new Engine(new FakeRegistry(), pc, new FakePerformance(), new FakeProtection(), stubborn,
+                                 new MemoryReceiptStore(), "1.0.0", "PC", "sam");
+        var refusedApp = failing.Apply(new Plan(Array.Empty<Guard>(), Array.Empty<RegChange>()), failing.Bundled());
+        s.Equal("an app Windows will not remove is recorded as failed", 1, refusedApp.Failed);
+        s.Check("with the reason", refusedApp.Apps[0].Error is not null);
+        s.Check("and it is not claimed as a way to put anything back", !refusedApp.NeedsStore);
 
         // ---- a PC this app has nothing to say about ----
         var (win11, _, pc11) = Bench();

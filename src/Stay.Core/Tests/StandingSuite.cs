@@ -3,7 +3,7 @@ namespace Stay.Core.Tests;
 public static class StandingSuite
 {
     private static Engine On(FakeMachine machine, FakeRegistry? registry = null)
-        => new(registry ?? new FakeRegistry(), machine, new FakePerformance(), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
+        => new(registry ?? new FakeRegistry(), machine, new FakePerformance(), new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
            { Now = () => new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero) };
 
     public static Suite Run()
@@ -74,7 +74,7 @@ public static class StandingSuite
         s.Check("LTSC in date is", On(ltsc).Scan().Patched);
 
         var deadLtsc = new FakeMachine { Build = ltsc.Build };
-        var far = new Engine(new FakeRegistry(), deadLtsc, new FakePerformance(), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
+        var far = new Engine(new FakeRegistry(), deadLtsc, new FakePerformance(), new FakeProtection(), new FakePackages(Array.Empty<InstalledApp>()), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
             { Now = () => new DateTimeOffset(2028, 1, 1, 0, 0, 0, TimeSpan.Zero) };
         s.Check("LTSC past its date is not", !far.Scan().Patched);
         return s;

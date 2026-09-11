@@ -8,7 +8,7 @@ public static class ReceiptSuite
         var when = new DateTimeOffset(2026, 9, 10, 14, 30, 0, TimeSpan.Zero);
         var change = new RegChange("rdp", Hive.LocalMachine, @"SYSTEM\CurrentControlSet\Control\Terminal Server",
                                    "fDenyTSConnections", RegValue.Absent, RegValue.DWord(1));
-        var receipt = new Receipt(Receipt.NewId(when), when, "PC", "sam", "1.0.0", new[] { change }, false);
+        var receipt = new Receipt(Receipt.NewId(when), when, "PC", "sam", "1.0.0", new[] { change }, Array.Empty<AppRemoval>(), false);
 
         s.Equal("the id is the moment it happened", "20260910-143000", receipt.Id);
         s.Equal("one change counted", 1, receipt.Changed);
@@ -23,7 +23,7 @@ public static class ReceiptSuite
         var failed = change with { Error = "no" };
         s.Check("a failed change knows it", failed.Failed);
         s.Equal("and is not counted as a change",
-            0, new Receipt("x", when, "PC", "sam", "1.0.0", new[] { failed }, false).Changed);
+            0, new Receipt("x", when, "PC", "sam", "1.0.0", new[] { failed }, Array.Empty<AppRemoval>(), false).Changed);
 
         s.Throws<InvalidDataException>("something that is not a receipt is refused", () => Receipt.FromJson("null"));
         return s;
