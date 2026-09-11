@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Stay for Windows 10 Help</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; --fg: #1b1a17; --muted: #5e5c53; --bg: #fdfdfb; --card: #f2f1ed; --accent: #2c5f8a; --keep: #9a6b15; --line: #dedcd5; }
+  @media (prefers-color-scheme: dark) { :root { --fg: #edebe3; --muted: #a7a49a; --bg: #1e1e1b; --card: #2e2d27; --accent: #7fb3dd; --keep: #e0ae52; --line: #3a3932; } }
+  body { margin: 0; font: 15px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; color: var(--fg); background: var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 30px; margin: 0 0 4px; } h1 small { display: block; font-size: 15px; font-weight: 400; color: var(--muted); }
+  h2 { font-size: 20px; margin: 36px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .muted { color: var(--muted); }
+  code, pre { font: 13px "Cascadia Mono", Consolas, ui-monospace, monospace; }
+  pre { background: var(--card); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
+  .card { background: var(--card); border-radius: 10px; padding: 14px 16px; margin: 12px 0; }
+  .keep { border-left: 4px solid var(--keep); }
+  nav a { margin-right: 14px; color: var(--accent); text-decoration: none; } a { color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; }
+  td, th { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; }
+  kbd { font: 12px "Cascadia Mono", Consolas, monospace; background: var(--card); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; }
+</style></head><body><main>
+
+<h1>Stay for Windows 10 <small>What it tells you, what it changes, and how to undo any of it.</small></h1>
+
+<nav><a href="#stand">Where you stand</a><a href="#patched">Still patched</a><a href="#eleven">Windows 11</a>
+<a href="#shut">What to shut</a><a href="#faster">Make it faster</a><a href="#junk">The junk</a>
+<a href="#drift">What came back</a><a href="#receipts">Receipts</a><a href="#console">Console</a></nav>
+
+<h2 id="stand">Where you stand</h2>
+<p>Windows 10 stopped being supported on <strong>14 October 2025</strong>. Extended Security Updates carry on to
+<strong>12 October 2027</strong>, and you can still join at any time until then. There are three ways in and one
+of them costs nothing: sync your PC settings to a Microsoft account, spend 1,000 Microsoft Rewards points, or pay
+$30 once for up to ten PCs on the same account. Stay takes you to the page; it cannot enrol you, because that is
+a Microsoft account flow inside Settings.</p>
+
+<p>ESU is <em>critical and important security updates for Windows itself</em>. Not bug fixes, not features, not
+support, and nothing for any other program.</p>
+
+<div class="card keep"><strong>Entitled is not the same as receiving.</strong> Stay reads the day an update
+really installed and compares it to what your PC is entitled to. An enrolment that stopped delivering is worse
+than none, because you believe you are covered. Anything wrong is listed with why it matters and what to do.</div>
+
+<p>Whether you are enrolled is worked out from two independent things: the licences Windows holds, and whether
+anything has installed since support ended — which on an unenrolled PC nothing can. When they agree, Stay says so
+and says why. When they disagree it tells you they disagree and shows you both, rather than guessing. Telling
+somebody who is enrolled that they are not is the worst mistake it could make.</p>
+
+<h2 id="patched">Still being patched</h2>
+<p>Different pieces of the PC stop getting fixes on different days, and nothing on the machine tells you that.</p>
+<table>
+<tr><th>What</th><th>Until</th></tr>
+<tr><td>Windows itself</td><td>Only with ESU, to 12 October 2027</td></tr>
+<tr><td>Microsoft Edge and WebView2</td><td>31 October 2028</td></tr>
+<tr><td>Microsoft Defender definitions</td><td>31 October 2028</td></tr>
+<tr><td>Microsoft 365 Apps</td><td>10 October 2028, security updates only after version 2608</td></tr>
+</table>
+<p>Your browser is on this page too. Almost everything that gets onto a PC arrives through the browser, so on a
+Windows nobody is patching, the browser matters more than every switch in this app put together — and it is still
+being updated. Microsoft has committed to Edge until October 2028. Google has published no end date for Chrome
+on Windows 10. Mozilla has said there is no end date for Firefox. Where nobody has promised anything, Stay says
+that rather than inventing a date.</p>
+
+<h2 id="eleven">Windows 11</h2>
+<p>Stay checks the same things Microsoft's own tool does and tells you <em>which</em> check fails, because the
+answers are not alike. A TPM switched off in firmware is ten minutes in the BIOS. A processor that is not on the
+list is a new PC. Stay will not get around the checks and will not tell you how.</p>
+
+<h2 id="shut">What to shut</h2>
+<p>Fifteen doors worth closing on a PC nobody is patching. Each says what it is, what shutting it does, and what
+it costs you. Two that are most likely to get in the way — Remote Desktop and the print spooler — are not ticked
+for you.</p>
+<div class="card"><strong>It cannot make an unpatched Windows safe.</strong> Nothing can except Microsoft. What
+this reduces is how much of the PC is reachable.</div>
+
+<h2 id="faster">Make it faster</h2>
+<p>Windows times its own start, and times the programs holding it up, in a log almost nobody knows exists. Stay
+reads it, so instead of "High" or "Medium" you get <em>OneDrive, 4.2 seconds at sign-in</em>. Stopping one does
+not remove the program; it opens normally when you open it. Startup programs are never ticked for you.</p>
+<p>Then five switches that genuinely help: animations and shadows, transparency, the search index on a spinning
+disk, SysMain on a solid one, and Storage Sense so the disk stops filling. It is a short list on purpose — most
+of what circulates as Windows tuning is folklore.</p>
+<div class="card keep"><strong>It does not make Windows 10 fast.</strong> If the PC has a spinning hard disk, an
+SSD would do more for it than everything in this app put together, and Stay says so before offering you a single
+switch. Space that could come back is shown but never deleted: deleting is the one thing a receipt cannot undo,
+so Stay opens Windows' own cleanup instead.</p></div>
+
+<h2 id="junk">Turn off the junk</h2>
+<p>The advertising, the AI hooks, the telemetry and the noise, and the bundled apps nobody asked for. The switch
+list comes from <a href="https://github.com/keithadler/quietwin">Quiet for Windows</a>, which is written for
+Windows 11 — so eight of its switches are for features Windows 10 never had. Those are left out, and Stay says
+how many and why: writing a value that does nothing would leave you believing you had turned something off.</p>
+<div class="card keep"><strong>Removing an app is the only thing Stay does that a receipt cannot undo.</strong>
+It says exactly that before the button, not after, and the receipt keeps a Store link for each one.</div>
+
+<h2 id="drift">What turned itself back on</h2>
+<p>Windows puts its own defaults back when it updates itself and does not mention it. Nobody remembers what they
+switched off six months ago — but the receipts do, so Stay checks every value it ever set and tells you what has
+come back, when you turned it off, and offers to do it again.</p>
+
+<h2 id="receipts">Receipts</h2>
+<p>Every change Stay has made on this PC, with the value each thing had before, and one button that puts it back.
+Receipts live in <code>%LOCALAPPDATA%\Stay</code> as plain JSON you can read. Stay can also ask Windows for a
+restore point first, which is a tick box on the bar.</p>
+
+<h2 id="console">The console twin</h2>
+<p><code>stay.exe</code> is the same program without a window, with <code>--json</code> on everything.</p>
+<pre>stay status                  where this PC stands
+stay patched                 what is still getting updates, and until when
+stay eleven                  whether this PC can take Windows 11
+stay guards                  what is open that this app can shut
+stay harden --all            shut everything it suggests, with a receipt
+stay harden --all --dry-run  show the exact changes and make none
+stay speed                   what is making this PC slow
+stay speed --all             do everything it suggests for speed
+stay speed --stop OneDrive   stop one program starting with the PC
+stay junk                    the advertising, AI hooks and telemetry still on
+stay junk --all              turn all of it off
+stay junk --apps             remove the bundled apps the list calls junk
+stay drift                   what you turned off that has turned itself back on
+stay drift --fix             turn all of it off again
+stay receipts                every change ever made
+stay undo &lt;id&gt;               put one receipt's changes back
+stay report                  everything, as one document
+stay selftest                the checks, from inside the shipped exe</pre>
+<p>Exit codes: 0 fine, 1 something to look at, 2 a problem, 64 a mistake in the command.</p>
+
+<h2>Privacy</h2>
+<p>No account, no cloud, no telemetry, nothing about you or this PC leaves it. The one network request is a daily
+question to GitHub about whether there is a newer version, which sends no identifier and which you can turn off.</p>
+
+<h2>More from the same maker</h2>
+<p>Small apps built the same way: each does one thing, says exactly what it touches, and never phones home. Free,
+MIT licensed, no accounts. All of them at <a href="https://keithadler.github.io">keithadler.github.io</a>.</p>
+
+</main></body></html>

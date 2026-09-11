@@ -71,6 +71,28 @@ public partial class MainWindow : Window
         Say($"Turned {receipt.Changed} of them off again. Receipt {receipt.Id}.");
     }
 
+    /// <summary>
+    /// The help page, written out of the exe rather than fetched. Somebody on a PC that is out of support may
+    /// well be on one that is offline, and help that needs the internet is not help.
+    /// </summary>
+    private void OpenHelp(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Stay for Windows 10 Help.html");
+            using (var from = typeof(MainWindow).Assembly.GetManifestResourceStream("Stay.Help.html"))
+            {
+                if (from is null) { Shell.Open("https://github.com/keithadler/staywin#readme"); return; }
+                using var to = System.IO.File.Create(path);
+                from.CopyTo(to);
+            }
+            Shell.Open(path);
+        }
+        catch { Shell.Open("https://github.com/keithadler/staywin#readme"); }
+    }
+
+    private void OpenFamily(object sender, RoutedEventArgs e) => Shell.Open("https://keithadler.github.io");
+
     private void OpenUpdate(object sender, RoutedEventArgs e) => Shell.Open("ms-settings:windowsupdate");
 
     /// <summary>Windows' own Disk Cleanup, because deleting files is the one thing a receipt cannot undo.</summary>

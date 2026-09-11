@@ -242,6 +242,11 @@
                     <TextBlock Text="for Windows 10" FontSize="13" Foreground="{DynamicResource Muted}"/>
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
+                    <TextBlock Margin="0,0,0,10">
+                        <Hyperlink Click="OpenHelp"><Run Text="Help"/></Hyperlink>
+                        <Run Text="  ·  " Foreground="{DynamicResource Muted}"/>
+                        <Hyperlink Click="OpenFamily"><Run Text="More from the same maker"/></Hyperlink>
+                    </TextBlock>
                     <TextBlock Text="{Binding DatesChecked}" Style="{StaticResource Small}" TextWrapping="Wrap"/>
                 </StackPanel>
                 <ListBox x:Name="Panes" BorderThickness="0" Background="Transparent" Margin="8,0"

@@ -1,0 +1,19 @@
+Stay for Windows 10: where your PC stands now that Windows 10 is not supported, and what to do about it.
+
+Windows 10 stopped being supported on 14 October 2025, and your PC will not tell you where that leaves it. Are you enrolled in Extended Security Updates? Is that enrolment actually delivering anything? What on this machine is still getting fixed regardless? Can it take Windows 11, and if not, which check fails — the one you can fix in ten minutes, or the one that means a new PC?
+
+Stay answers all of that on one screen.
+
+The part nothing else does: being entitled to updates and receiving them are different things, and they come apart more often than anybody expects. Stay reads the day an update really installed, a restart left waiting for weeks, an update service switched off years ago by a tuning guide somebody followed. "Enrolled in Extended Security Updates, but the last update landed 7 months ago" is a sentence somebody needs to see, and nothing in Windows will say it.
+
+It shows its working. Enrolment is read from two independent things — the licences Windows holds, and whether anything has installed since support ended. When they disagree it says so and shows you both rather than guessing, because telling somebody who is enrolled that they are not is the worst mistake it could make.
+
+Then the rest of what an old PC needs. What is making it slow, measured from Windows' own startup log rather than guessed at — this PC last took 94 seconds to start, and OneDrive cost 4.2 of them. The advertising, AI hooks and telemetry still switched on. The bundled apps nobody asked for. And what Windows quietly turned back on for itself the last time it updated.
+
+Every change is written to a receipt first, with the value it had before, and one button puts any of it back.
+
+It is honest about what it cannot do. It cannot patch Windows, and nothing can except Microsoft. It cannot enrol you in ESU; that is a Microsoft account flow in Settings. It will not get around the Windows 11 hardware checks and will not tell you how. It does not make Windows 10 fast — if the PC has a spinning hard disk it says so first, and says an SSD would do more than everything in the app put together.
+
+One exe, no installer, no account, no cloud, no telemetry. Free and MIT.
+
+https://github.com/keithadler/staywin
