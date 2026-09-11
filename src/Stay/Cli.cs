@@ -94,7 +94,7 @@ public static class Cli
         {
             Json(o, new
             {
-                windows = new { name = w.Name, w.Caption, w.Edition, w.Release, w.Version, w.Build, w.Architecture, w.IsWindows10, w.IsLtsc },
+                windows = new { name = w.Name, w.Caption, w.Edition, w.Release, w.Version, w.Build, w.Architecture, w.IsWindows10, w.IsWindows11, w.IsLtsc },
                 esu = new { state = standing.Esu.State.ToString(), standing.Esu.Detail, standing.Esu.Until },
                 patched = standing.Patched,
                 working = standing.Working,
