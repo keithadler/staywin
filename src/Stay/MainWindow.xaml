@@ -1,0 +1,268 @@
+<Window x:Class="Stay.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Stay"
+        Title="Stay for Windows 10" Width="1140" Height="760" MinWidth="880" MinHeight="580"
+        Background="{DynamicResource Ground}" FontFamily="Segoe UI Variable Text, Segoe UI"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+    <Window.Resources>
+        <local:StateBrush x:Key="StateBg" Mode="Bg"/>
+        <local:StateBrush x:Key="StateInk" Mode="Ink"/>
+        <BooleanToVisibilityConverter x:Key="Vis"/>
+        <local:NotEmptyToVisibility x:Key="NotEmpty"/>
+        <local:FalseToVisibility x:Key="NotVis"/>
+
+        <DataTemplate x:Key="GuardTemplate" DataType="{x:Type local:GuardRow}">
+            <Border Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Selected}" IsEnabled="{Binding CanSelect}"
+                              VerticalAlignment="Top" Margin="0,4,12,0"/>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"/>
+                            <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                                <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                            </Border>
+                            <TextBlock Text="{Binding CostWord}" Style="{StaticResource Small}" Margin="8,3,0,0"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding What}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"><Run FontWeight="SemiBold">Shutting it:</Run> <Run Text="{Binding Does, Mode=OneWay}"/></TextBlock>
+                        <TextBlock Margin="0,2,0,0" TextWrapping="Wrap"><Run FontWeight="SemiBold">What you lose:</Run> <Run Text="{Binding Costs, Mode=OneWay}"/></TextBlock>
+                        <TextBlock Text="{Binding Note}" Style="{StaticResource Small}" Margin="0,4,0,0"
+                                   Visibility="{Binding Note, Converter={StaticResource NotEmpty}}"/>
+                        <Expander Header="The exact change" Margin="0,6,0,0" FontSize="12" Foreground="{DynamicResource Muted}">
+                            <ItemsControl ItemsSource="{Binding ExactChanges}" Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" Style="{StaticResource Mono}"/></DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Expander>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ComponentTemplate" DataType="{x:Type local:ComponentRow}">
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"/>
+                        <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                            <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding When}" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                    <TextBlock Text="{Binding What}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Detail}" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+                    <TextBlock Text="{Binding Source}" Style="{StaticResource Small}" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="RequirementTemplate" DataType="{x:Type local:RequirementRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource H2}"/>
+                        <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                            <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Found}" Margin="0,3,0,0"/>
+                    <TextBlock Text="{Binding Needed}" Margin="0,2,0,0" Foreground="{DynamicResource Muted}"
+                               Visibility="{Binding Needed, Converter={StaticResource NotEmpty}}"/>
+                    <TextBlock Text="{Binding Remedy}" Margin="0,4,0,0" TextWrapping="Wrap"
+                               Visibility="{Binding Remedy, Converter={StaticResource NotEmpty}}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ReceiptTemplate" DataType="{x:Type local:ReceiptRow}">
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="{Binding When}" Style="{StaticResource H2}"/>
+                            <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Muted}"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Put it back" Click="UndoClicked" Tag="{Binding}"
+                                VerticalAlignment="Top" Visibility="{Binding CanUndo, Converter={StaticResource Vis}}"/>
+                    </Grid>
+                    <Expander Header="What it changed" Margin="0,8,0,0" FontSize="12" Foreground="{DynamicResource Muted}">
+                        <ItemsControl ItemsSource="{Binding Lines}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate><TextBlock Text="{Binding}" Style="{StaticResource Mono}"/></DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Expander>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="ByHandTemplate">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <StackPanel>
+                    <TextBlock Text="{Binding Item1}" Style="{StaticResource H2}"/>
+                    <TextBlock Text="{Binding Item2}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding Item3}" Style="{StaticResource Mono}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid Background="{DynamicResource Ground}">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="212"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- the pane list -->
+        <Border Background="{DynamicResource NavBg}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Margin="16,18,16,10">
+                    <TextBlock Text="Stay" FontSize="21" FontWeight="Bold" Foreground="{DynamicResource Ink}"/>
+                    <TextBlock Text="for Windows 10" FontSize="13" Foreground="{DynamicResource Muted}"/>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Bottom" Margin="16,10,16,16">
+                    <TextBlock Text="{Binding DatesChecked}" Style="{StaticResource Small}" TextWrapping="Wrap"/>
+                </StackPanel>
+                <ListBox x:Name="Panes" BorderThickness="0" Background="Transparent" Margin="8,0"
+                         SelectedIndex="0" SelectionChanged="PaneChanged">
+                    <ListBoxItem Content="Where you stand" Padding="12,9"/>
+                    <ListBoxItem Content="Still being patched" Padding="12,9"/>
+                    <ListBoxItem Content="Windows 11" Padding="12,9"/>
+                    <ListBoxItem Content="What to shut" Padding="12,9"/>
+                    <ListBoxItem Content="Receipts" Padding="12,9"/>
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <!-- the pane -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <ScrollViewer x:Name="Scroller" VerticalScrollBarVisibility="Auto" Padding="24,20,24,20">
+                <Grid>
+                    <!-- where you stand -->
+                    <StackPanel x:Name="StandPane">
+                        <TextBlock Text="{Binding Headline}" Style="{StaticResource H1}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding HeadlineDetail}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding WindowsLine}" Style="{StaticResource Small}" Margin="0,10,0,0"/>
+
+                        <Border Style="{StaticResource CardStyle}" Margin="0,18,0,0"
+                                Visibility="{Binding EsuOffered, Converter={StaticResource Vis}}">
+                            <StackPanel>
+                                <TextBlock Text="Extended Security Updates are still open to join" Style="{StaticResource H2}"/>
+                                <TextBlock Text="{Binding WhatEsuIs}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                <ItemsControl ItemsSource="{Binding EsuRoutes}" Margin="0,10,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" Margin="0,0,0,4" TextWrapping="Wrap"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"
+                                           Text="Enrolling is done in Windows Update, by Microsoft, not by this app. The button opens the page."/>
+                                <Button Content="Open Windows Update" Style="{StaticResource Primary}"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0" Click="OpenUpdate"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource CardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="What this app can and cannot do" Style="{StaticResource H2}"/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="It cannot patch Windows, and nothing can except Microsoft. It cannot enrol you in Extended Security Updates; that is a Microsoft account flow in Settings. It will not get round Windows 11's hardware checks and will not tell you how."/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="What it can do is tell you exactly where this PC stands, what is still being patched and until when, and shut the doors that are worth shutting on a machine nobody is fixing any more — each with a receipt that puts it back."/>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="{Binding OpenSummary}" Margin="0,18,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding ElevenSummary}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <!-- still being patched -->
+                    <StackPanel x:Name="PatchedPane" Visibility="Collapsed">
+                        <TextBlock Text="Still being patched" Style="{StaticResource H1}"/>
+                        <TextBlock Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"
+                                   Text="Different pieces of this PC stop getting security updates on different days. Nothing on the machine tells you that, so here it is, with where each date comes from."/>
+                        <ItemsControl ItemsSource="{Binding Components}" ItemTemplate="{StaticResource ComponentTemplate}"/>
+                    </StackPanel>
+
+                    <!-- windows 11 -->
+                    <StackPanel x:Name="ElevenPane" Visibility="Collapsed">
+                        <TextBlock Text="Could this PC take Windows 11?" Style="{StaticResource H1}"/>
+                        <TextBlock Text="{Binding ElevenSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"/>
+                        <ItemsControl ItemsSource="{Binding Requirements}" ItemTemplate="{StaticResource RequirementTemplate}"/>
+                        <Border Style="{StaticResource CardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Why there is no bypass here" Style="{StaticResource H2}"/>
+                                <TextBlock Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Windows 11 can be installed on a PC that fails these checks. Microsoft does not support it, such a PC may stop receiving updates, and putting a machine on an OS that might not be patched is the exact problem this app exists to deal with. So this app names the failing check and stops there."/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- what to shut -->
+                    <StackPanel x:Name="ShutPane" Visibility="Collapsed">
+                        <TextBlock Text="What to shut" Style="{StaticResource H1}"/>
+                        <TextBlock Text="{Binding OpenSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,14"
+                                   Text="Ticked is what it suggests. Nothing here is a patch: these close doors rather than fix holes, which is the most that can be done on an OS that is not being fixed."/>
+                        <ItemsControl ItemsSource="{Binding Guards}" ItemTemplate="{StaticResource GuardTemplate}"/>
+
+                        <TextBlock Text="Worth doing, but not by this app" Style="{StaticResource H1}" Margin="0,22,0,0"/>
+                        <TextBlock Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"
+                                   Text="These need a Windows feature turned off or a change this app could not undo for you, so it tells you instead of doing it."/>
+                        <ItemsControl ItemsSource="{Binding ByHand}" ItemTemplate="{StaticResource ByHandTemplate}"/>
+                    </StackPanel>
+
+                    <!-- receipts -->
+                    <StackPanel x:Name="ReceiptPane" Visibility="Collapsed">
+                        <TextBlock Text="Receipts" Style="{StaticResource H1}"/>
+                        <TextBlock Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"
+                                   Text="Every change this app has made on this PC, with what each value was before. Putting one back writes the old values exactly as they were found."/>
+                        <TextBlock Text="Nothing has been changed by this app on this PC."
+                                   Visibility="{Binding HasReceipts, Converter={StaticResource NotVis}}"
+                                   Foreground="{DynamicResource Muted}"/>
+                        <ItemsControl ItemsSource="{Binding Receipts}" ItemTemplate="{StaticResource ReceiptTemplate}"/>
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+
+            <!-- the bar, shown only on the pane that changes things -->
+            <Border x:Name="ActionBar" Grid.Row="1" Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}"
+                    BorderThickness="0,1,0,0" Padding="24,12" Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock x:Name="BarText" Foreground="{DynamicResource Muted}"/>
+                        <CheckBox x:Name="WantRestorePoint" Content="Ask Windows for a restore point first" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="Show the exact changes" Click="ShowChanges" Margin="0,0,8,0"/>
+                        <Button x:Name="ApplyButton" Content="Shut the ticked ones" Style="{StaticResource Primary}" Click="ApplyClicked"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

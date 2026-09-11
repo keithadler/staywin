@@ -1,0 +1,107 @@
+namespace Stay.Core;
+
+/// <summary>The registry, as much of it as the engine needs. The app supplies the real one; tests supply a fake.</summary>
+public interface IRegistry
+{
+    RegValue Read(Hive hive, string key, string name);
+    /// <summary>Writes a value, creating the key if needed. Absent deletes the value.</summary>
+    void Write(Hive hive, string key, string name, RegValue value);
+    /// <summary>The names under a key, for the checks that have to look rather than ask.</summary>
+    IReadOnlyList<string> SubKeys(Hive hive, string key);
+}
+
+/// <summary>What the PC is: the parts the engine reasons about but cannot work out for itself.</summary>
+public interface IMachine
+{
+    WindowsBuild Windows();
+
+    /// <summary>Every software licence Windows knows about, by name and whether it is active. ESU is one of these.</summary>
+    IReadOnlyList<(string Name, string Description, bool Active)> Licences();
+
+    /// <summary>TPM: present, enabled, and which spec version. Null when the PC has none at all.</summary>
+    (bool Enabled, string Version)? Tpm();
+
+    bool? SecureBootEnabled();
+    bool UefiBoot();
+
+    /// <summary>The processor as Windows names it, plus what it takes to judge it against Windows 11's list.</summary>
+    (string Name, string Manufacturer, int Family, int Model, int Cores, double GHz) Cpu();
+
+    long MemoryBytes();
+    long SystemDiskBytes();
+
+    /// <summary>Whether a program is installed, by the name it registers. Used for "is Office even on this PC".</summary>
+    bool Installed(string what);
+
+    /// <summary>Whether a printer other than the built-in writers is set up, so the spooler advice can be honest.</summary>
+    bool HasPrinter();
+}
+
+/// <summary>Where receipts live.</summary>
+public interface IReceiptStore
+{
+    void Save(Receipt receipt);
+    IReadOnlyList<Receipt> List();
+}
+
+// ---------- fakes, so every test runs on a made-up PC and never on this one ----------
+
+public sealed class FakeRegistry : IRegistry
+{
+    private readonly Dictionary<string, RegValue> _values = new(StringComparer.OrdinalIgnoreCase);
+    public int Writes { get; private set; }
+    public bool RefuseWrites { get; set; }
+
+    private static string K(Hive h, string key, string name) => $"{h}\\{key}\\{name}";
+
+    public RegValue Read(Hive hive, string key, string name)
+        => _values.TryGetValue(K(hive, key, name), out var v) ? v : RegValue.Absent;
+
+    public void Write(Hive hive, string key, string name, RegValue value)
+    {
+        if (RefuseWrites) throw new UnauthorizedAccessException("the fake was told to refuse");
+        Writes++;
+        if (value.Kind == ValueKind.Absent) _values.Remove(K(hive, key, name));
+        else _values[K(hive, key, name)] = value;
+    }
+
+    public IReadOnlyList<string> SubKeys(Hive hive, string key) => Array.Empty<string>();
+
+    public void Set(Hive hive, string key, string name, RegValue value) => _values[K(hive, key, name)] = value;
+    public IReadOnlyDictionary<string, RegValue> Snapshot() => new Dictionary<string, RegValue>(_values, StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>A made-up PC. Every property is settable, so a test can build the exact machine it wants to reason about.</summary>
+public sealed class FakeMachine : IMachine
+{
+    public WindowsBuild Build { get; set; } =
+        new("Microsoft Windows 10 Pro", "Professional", "22H2", 10, 19045, 4291, "x64");
+    public List<(string Name, string Description, bool Active)> Licences_ { get; } = new();
+    public (bool Enabled, string Version)? TpmChip { get; set; } = (true, "2.0");
+    public bool? SecureBoot { get; set; } = true;
+    public bool Uefi { get; set; } = true;
+    public (string Name, string Manufacturer, int Family, int Model, int Cores, double GHz) Processor { get; set; }
+        = ("Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz", "GenuineIntel", 6, 142, 4, 1.6);
+    public long Memory { get; set; } = 8L * 1024 * 1024 * 1024;
+    public long Disk { get; set; } = 256L * 1024 * 1024 * 1024;
+    public HashSet<string> Programs { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool Printer { get; set; }
+
+    public WindowsBuild Windows() => Build;
+    public IReadOnlyList<(string Name, string Description, bool Active)> Licences() => Licences_;
+    public (bool Enabled, string Version)? Tpm() => TpmChip;
+    public bool? SecureBootEnabled() => SecureBoot;
+    public bool UefiBoot() => Uefi;
+    public (string, string, int, int, int, double) Cpu() => Processor;
+    public long MemoryBytes() => Memory;
+    public long SystemDiskBytes() => Disk;
+    public bool Installed(string what) => Programs.Contains(what);
+    public bool HasPrinter() => Printer;
+}
+
+public sealed class MemoryReceiptStore : IReceiptStore
+{
+    private readonly List<Receipt> _list = new();
+    public void Save(Receipt receipt) { _list.RemoveAll(r => r.Id == receipt.Id); _list.Add(receipt); }
+    public IReadOnlyList<Receipt> List() => _list.OrderByDescending(r => r.When).ToList();
+}

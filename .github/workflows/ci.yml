@@ -1,0 +1,49 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      # The engine knows nothing about Windows, so its checks run against PCs that do not exist.
+      - name: The engine's checks
+        run: |
+          dotnet build src/Stay.Selftest -c Release --nologo
+          dotnet src/Stay.Selftest/bin/Release/net9.0/Stay.Selftest.dll
+
+      - name: Build both exes, both architectures
+        run: |
+          dotnet publish src/Stay/Stay.csproj -c Release -r win-x64 --nologo -o dist/x64
+          dotnet publish src/Stay/Stay.csproj -c Release -r win-arm64 --nologo -o dist/arm64
+          dotnet publish src/Stay/Stay.csproj -c Release -r win-x64 --nologo -o dist/x64-cli -p:CliBuild=true
+
+      - name: The console twin answers on a real Windows
+        run: |
+          dist/x64-cli/stay.exe version
+          dist/x64-cli/stay.exe selftest | Select-Object -Last 1
+          dist/x64-cli/stay.exe status
+
+      # This runner is Windows Server, not Windows 10, so the Windows 10 paths are driven through the test hook.
+      # Reading only: nothing is written, and the exit code is the one a real unpatched PC would give.
+      - name: The Windows 10 paths
+        run: |
+          $env:STAY_PRETEND_WINDOWS10 = "1"
+          dist/x64-cli/stay.exe status
+          dist/x64-cli/stay.exe updates
+          dist/x64-cli/stay.exe guards
+          dist/x64-cli/stay.exe harden --all --dry-run
+        continue-on-error: true
+
+      - name: The README's claims have to be true
+        run: bash tests/docs.sh
+        shell: bash
+
+      # Working code wired to nothing is the mistake that keeps happening. This asks whether there is a way to
+      # everything the app can do.
+      - name: Everything has a way to it
+        run: bash tests/reachable.sh
+        shell: bash

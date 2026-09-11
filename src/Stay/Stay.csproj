@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- One project, two exes: "Stay for Windows 10.exe" (window) and "stay.exe" (console, for scripts and SSH). -->
+    <OutputType Condition="'$(CliBuild)'!='true'">WinExe</OutputType>
+    <OutputType Condition="'$(CliBuild)'=='true'">Exe</OutputType>
+    <DefineConstants Condition="'$(CliBuild)'=='true'">$(DefineConstants);CLI_BUILD</DefineConstants>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Stay</RootNamespace>
+    <AssemblyName Condition="'$(CliBuild)'!='true'">Stay for Windows 10</AssemblyName>
+    <AssemblyName Condition="'$(CliBuild)'=='true'">stay</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <StartupObject>Stay.Program</StartupObject>
+    <ApplicationIcon Condition="Exists('Stay.ico')">Stay.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
+    <AssemblyTitle>Stay for Windows 10</AssemblyTitle>
+    <Product>Stay for Windows 10</Product>
+    <Company>Keith Adler</Company>
+    <Authors>Keith Adler</Authors>
+    <Description>Where this PC stands now that Windows 10 is not supported, what is still being patched, and the things worth shutting on a PC nobody is fixing any more.</Description>
+    <Copyright>Copyright (c) 2026 Keith Adler. MIT.</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- publish: single self-contained exe, no runtime to install -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Stay.Core/Stay.Core.csproj" />
+    <!-- WMI, for the licence check that answers "is ESU actually on" and for the TPM. -->
+    <PackageReference Include="System.Management" Version="9.0.0" />
+  </ItemGroup>
+</Project>
