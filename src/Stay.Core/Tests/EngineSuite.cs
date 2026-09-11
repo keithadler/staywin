@@ -7,7 +7,7 @@ public static class EngineSuite
         var reg = new FakeRegistry();
         var pc = new FakeMachine();
         pc.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
-        var engine = new Engine(reg, pc, new MemoryReceiptStore(), "1.0.0", "PC", "sam")
+        var engine = new Engine(reg, pc, new FakePerformance(), new MemoryReceiptStore(), "1.0.0", "PC", "sam")
             { Now = () => new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero) };
         return (engine, reg, pc);
     }

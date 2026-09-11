@@ -102,6 +102,32 @@ public sealed class RequirementRow
     public string StateWord { get; }
 }
 
+/// <summary>One program that starts with the PC, on the speed pane.</summary>
+public sealed class StartupRow : INotifyPropertyChanged
+{
+    public StartupEntry Entry { get; }
+    private bool _selected;
+    public bool Selected { get => _selected; set { _selected = value; PropertyChanged?.Invoke(this, new(nameof(Selected))); } }
+
+    public StartupRow(StartupEntry entry) { Entry = entry; }
+
+    public string Name => Entry.Name;
+    public string Command => Entry.Command;
+    public string Cost => Entry.Cost;
+    public bool CanSelect => Entry.Enabled;
+    public string StateKey => !Entry.Enabled ? "Shut" : Entry.Milliseconds is > 2000 ? "Loud" : "Partly";
+    public string StateWord => !Entry.Enabled ? "already off" : Entry.Milliseconds is null ? "starts with the PC" : Entry.Cost;
+    public event PropertyChangedEventHandler? PropertyChanged;
+}
+
+public sealed class SpaceRow
+{
+    public SpaceRow(Reclaimable item) { What = item.What; Size = $"{item.Gb:0.#} GB"; How = item.How; }
+    public string What { get; }
+    public string Size { get; }
+    public string How { get; }
+}
+
 public sealed class ReceiptRow
 {
     public ReceiptRow(Receipt receipt)
@@ -132,12 +158,17 @@ public sealed class Shell : INotifyPropertyChanged
 {
     private readonly Engine _engine;
     private Standing _standing;
+    private Pace _pace = null!;
 
     public Shell(Engine engine)
     {
         _engine = engine;
         _standing = engine.Scan();
         Guards = new ObservableCollection<GuardRow>();
+        Junk = new ObservableCollection<GuardRow>();
+        Speeds = new ObservableCollection<GuardRow>();
+        Startup = new ObservableCollection<StartupRow>();
+        Space = new ObservableCollection<SpaceRow>();
         Components = new ObservableCollection<ComponentRow>();
         Requirements = new ObservableCollection<RequirementRow>();
         Receipts = new ObservableCollection<ReceiptRow>();
@@ -145,6 +176,10 @@ public sealed class Shell : INotifyPropertyChanged
     }
 
     public ObservableCollection<GuardRow> Guards { get; }
+    public ObservableCollection<GuardRow> Junk { get; }
+    public ObservableCollection<GuardRow> Speeds { get; }
+    public ObservableCollection<StartupRow> Startup { get; }
+    public ObservableCollection<SpaceRow> Space { get; }
     public ObservableCollection<ComponentRow> Components { get; }
     public ObservableCollection<RequirementRow> Requirements { get; }
     public ObservableCollection<ReceiptRow> Receipts { get; }
@@ -157,6 +192,23 @@ public sealed class Shell : INotifyPropertyChanged
         foreach (var status in _standing.Guards.Where(g => _engine.Applies(g.Guard, _standing.Windows)))
             Guards.Add(new GuardRow(status, _engine.Expand(status.Guard), suggested.Contains(status.Guard.Id)));
 
+        var loud = _engine.SuggestedJunk(_standing).Select(g => g.Id).ToHashSet();
+        Junk.Clear();
+        foreach (var status in _standing.Junk)
+            Junk.Add(new GuardRow(status, status.Guard.Edits, loud.Contains(status.Guard.Id)));
+
+        _pace = _engine.Pace();
+        var faster = _engine.SuggestedPace(_pace).Select(g => g.Id).ToHashSet();
+        Speeds.Clear();
+        foreach (var status in _pace.Switches.Where(g => _engine.AppliesToPace(g.Guard, _pace.Disk)))
+            Speeds.Add(new GuardRow(status, status.Guard.Edits, faster.Contains(status.Guard.Id)));
+
+        Startup.Clear();
+        foreach (var entry in _pace.Startup) Startup.Add(new StartupRow(entry));
+
+        Space.Clear();
+        foreach (var item in _pace.Space) Space.Add(new SpaceRow(item));
+
         Components.Clear();
         foreach (var c in _standing.Components) Components.Add(new ComponentRow(c, _standing.Today));
 
@@ -168,7 +220,9 @@ public sealed class Shell : INotifyPropertyChanged
 
         foreach (var name in new[] { nameof(Headline), nameof(HeadlineDetail), nameof(Patched), nameof(EsuOffered),
                                      nameof(OpenCount), nameof(OpenSummary), nameof(ElevenSummary), nameof(WindowsLine),
-                                     nameof(HasReceipts), nameof(ByHand), nameof(DatesChecked) })
+                                     nameof(HasReceipts), nameof(ByHand), nameof(DatesChecked),
+                                     nameof(BootLine), nameof(DiskLine), nameof(Truth), nameof(StartupSummary),
+                                     nameof(SpaceSummary), nameof(HasSpace), nameof(JunkSummary) })
             PropertyChanged?.Invoke(this, new(name));
     }
 
@@ -225,6 +279,53 @@ public sealed class Shell : INotifyPropertyChanged
 
     public bool HasReceipts => Receipts.Count > 0;
     public IReadOnlyList<(string Title, string Why, string How)> ByHand => Core.Guards.ByHand;
+
+    // ---------- what is making it slow ----------
+
+    public string BootLine => _pace.LastBoot is { } boot
+        ? $"This PC last took {boot.Seconds:0} seconds to start, on {boot.When:d MMMM} at {boot.When:HH:mm}."
+        : "Windows has not recorded how long this PC takes to start.";
+
+    public string DiskLine
+    {
+        get
+        {
+            var kind = _pace.Disk.Kind switch
+            {
+                DiskKind.Spinning => "a spinning hard disk",
+                DiskKind.Solid => "solid state",
+                _ => "of a kind Windows would not say",
+            };
+            return $"The disk is {kind}, with {_pace.Disk.FreeGb:0} GB free of {_pace.Disk.TotalGb:0}. "
+                 + $"There is {_pace.MemoryGb:0.#} GB of memory.";
+        }
+    }
+
+    public string Truth => _pace.Truth;
+
+    public string StartupSummary => _pace.Running.Count == 0
+        ? "Nothing starts with this PC."
+        : $"{_pace.Running.Count} of {_pace.Startup.Count} programs start with this PC"
+          + (_pace.SecondsAtStartup > 0
+              ? $". Windows measured {_pace.SecondsAtStartup:0.0} seconds of that."
+              : ". Windows has not measured what they cost.");
+
+    public bool HasSpace => _pace.Space.Count > 0;
+    public string SpaceSummary => $"{_pace.Reclaimable / 1024.0 / 1024 / 1024:0.#} GB is being held that could come back. "
+        + "This app does not delete files: deleting cannot be undone by a receipt, so it tells you where it is instead.";
+
+    public string JunkSummary => _standing.Loud == 0
+        ? "Every advertising, AI and telemetry switch this app knows about is already off."
+        : $"{_standing.Loud} of them are still on.";
+
+    public Plan PlanSpeed()
+    {
+        var chosen = Speeds.Where(g => g.Selected && g.CanSelect).Select(g => g.Status.Guard).ToList();
+        chosen.AddRange(Startup.Where(r => r.Selected && r.CanSelect).Select(r => _engine.Stop(r.Entry)));
+        return _engine.PlanFor(chosen);
+    }
+
+    public Plan PlanJunk() => _engine.PlanFor(Junk.Where(g => g.Selected && g.CanSelect).Select(g => g.Status.Guard));
 
     // ---------- doing things ----------
 

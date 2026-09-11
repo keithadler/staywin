@@ -27,20 +27,29 @@ public partial class MainWindow : Window
     private void ShowPane(int which)
     {
         if (StandPane is null) return;   // during InitializeComponent
-        var panes = new[] { StandPane, PatchedPane, ElevenPane, ShutPane, ReceiptPane };
+        var panes = new[] { StandPane, PatchedPane, ElevenPane, ShutPane, SpeedPane, JunkPane, ReceiptPane };
         for (int i = 0; i < panes.Length; i++)
             panes[i].Visibility = i == which ? Visibility.Visible : Visibility.Collapsed;
 
-        // The bar that changes things belongs only to the pane that changes things.
-        ActionBar.Visibility = which == 3 ? Visibility.Visible : Visibility.Collapsed;
+        // The bar that changes things belongs only to the panes that change things.
+        ActionBar.Visibility = which is 3 or 4 or 5 ? Visibility.Visible : Visibility.Collapsed;
+        ApplyButton.Content = which switch { 4 => "Do the ticked ones", 5 => "Turn off the ticked ones", _ => "Shut the ticked ones" };
         Scroller.ScrollToTop();
         UpdateBar();
     }
 
+    /// <summary>The plan the bar acts on depends on which pane is in front; there is one bar and three lists.</summary>
+    private Plan Planned() => Panes.SelectedIndex switch
+    {
+        4 => _shell.PlanSpeed(),
+        5 => _shell.PlanJunk(),
+        _ => _shell.PlanSelected(),
+    };
+
     private void UpdateBar()
     {
-        var plan = _shell.PlanSelected();
-        int guards = _shell.Guards.Count(g => g.Selected && g.CanSelect);
+        var plan = Planned();
+        int guards = plan.Guards.Count;
         ApplyButton.IsEnabled = !plan.IsEmpty;
         BarText.Text = plan.IsEmpty
             ? "Nothing ticked that is not already shut."
@@ -50,17 +59,20 @@ public partial class MainWindow : Window
 
     private void OpenUpdate(object sender, RoutedEventArgs e) => Shell.Open("ms-settings:windowsupdate");
 
+    /// <summary>Windows' own Disk Cleanup, because deleting files is the one thing a receipt cannot undo.</summary>
+    private void OpenCleanup(object sender, RoutedEventArgs e) => Shell.Open("cleanmgr.exe");
+
     private void ShowChanges(object sender, RoutedEventArgs e)
     {
-        var plan = _shell.PlanSelected();
-        if (plan.IsEmpty) { Say("Nothing ticked that is not already shut."); return; }
+        var plan = Planned();
+        if (plan.IsEmpty) { Say("Nothing ticked that is not already done."); return; }
         var lines = plan.Registry.Select(c => $"{c.Path}\n    {c.Before}  ->  {c.After}");
         Say(string.Join("\n", lines), "Every value that would change");
     }
 
     private void ApplyClicked(object sender, RoutedEventArgs e)
     {
-        var plan = _shell.PlanSelected();
+        var plan = Planned();
         if (plan.IsEmpty) return;
 
         var asked = MessageBox.Show(
@@ -89,6 +101,7 @@ public partial class MainWindow : Window
             said += $"\n\n{receipt.Failed} failed. Those need an administrator — close the app and open it again with "
                   + "\"Run as administrator\".";
         if (plan.NeedsRestart) said += "\n\nSome of it takes effect after a restart.";
+        if (plan.Guards.Any(g => g.NeedsSignOut)) said += "\n\nSome of it takes effect after you sign out and back in.";
         said += $"\n\nReceipt {receipt.Id}. It is under Receipts, with a button that puts it all back.";
         Say(said);
     }

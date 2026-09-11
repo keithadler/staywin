@@ -18,15 +18,18 @@ public sealed class Engine
 {
     private readonly IRegistry _reg;
     private readonly IMachine _machine;
+    private readonly IPerformance _pace;
     private readonly IReceiptStore _store;
     private readonly string _version, _host, _user;
 
     public Func<DateTimeOffset> Now { get; set; } = () => DateTimeOffset.Now;
     public IReceiptStore Store => _store;
 
-    public Engine(IRegistry registry, IMachine machine, IReceiptStore store, string version, string host, string user)
+    public Engine(IRegistry registry, IMachine machine, IPerformance performance, IReceiptStore store,
+                  string version, string host, string user)
     {
-        _reg = registry; _machine = machine; _store = store; _version = version; _host = host; _user = user;
+        _reg = registry; _machine = machine; _pace = performance; _store = store;
+        _version = version; _host = host; _user = user;
     }
 
     private DateOnly Today => DateOnly.FromDateTime(Now().Date);
@@ -38,7 +41,9 @@ public sealed class Engine
         var windows = _machine.Windows();
         var esu = ReadEsu(windows);
         return new Standing(windows, esu, Components(windows, esu), Elevenable.Check(_machine),
-                            Guards.All.Select(StatusOf).ToList(), Today);
+                            Guards.All.Select(StatusOf).ToList(),
+                            Junk.Items.Select(StatusOf).ToList(),
+                            Today);
     }
 
     /// <summary>
@@ -134,6 +139,36 @@ public sealed class Engine
         return list;
     }
 
+    // ---------- what is making it slow ----------
+
+    /// <summary>
+    /// What the speed half found. Startup programs come back as they are; switching one off is worked out at the
+    /// moment it is asked for, because the bytes that mean "off" carry the time it happened.
+    /// </summary>
+    public Pace Pace()
+    {
+        var disk = _pace.Disk();
+        var switches = Speed.Switches.Select(StatusOf).ToList();
+        return new Pace(_pace.LastBoot(), _pace.Startup(), disk, _machine.MemoryBytes(), _pace.Space(), switches);
+    }
+
+    /// <summary>Whether a speed switch is the right advice for this PC: some of it depends on the kind of disk.</summary>
+    public bool AppliesToPace(Guard guard, SystemDisk disk) => guard.OnlyIf switch
+    {
+        "spinning" => disk.Kind == DiskKind.Spinning,
+        "solid" => disk.Kind == DiskKind.Solid,
+        _ => true,
+    };
+
+    public IReadOnlyList<Guard> SuggestedPace(Pace pace)
+        => pace.Switches
+            .Where(g => g.Guard.DefaultOn && g.NeedsDoing && AppliesToPace(g.Guard, pace.Disk))
+            .Select(g => g.Guard)
+            .ToList();
+
+    /// <summary>Switching off a startup program, as a switch like any other so it lands on a receipt.</summary>
+    public Guard Stop(StartupEntry entry) => Speed.Stop(entry, Now());
+
     // ---------- what is open, and what closing it would take ----------
 
     public GuardStatus StatusOf(Guard guard)
@@ -154,6 +189,7 @@ public sealed class Engine
     {
         ValueKind.Absent => current.Kind == ValueKind.Absent,
         ValueKind.DWord => current.Kind == ValueKind.DWord && current.Number == wanted.Number,
+        ValueKind.Binary => current.Kind == ValueKind.Binary && string.Equals(current.Text, wanted.Text, StringComparison.OrdinalIgnoreCase),
         _ => current.Kind == ValueKind.String && string.Equals(current.Text, wanted.Text, StringComparison.OrdinalIgnoreCase),
     };
 
@@ -177,6 +213,7 @@ public sealed class Engine
     public bool Applies(Guard guard, WindowsBuild windows)
     {
         if (windows.IsWindows11) return false;
+        if (guard.Id.Contains('.')) return true;   // the advertising, AI and telemetry list applies everywhere
         return guard.OnlyIf switch
         {
             "office" => _machine.Installed("Microsoft 365") || _machine.Installed("Office"),
@@ -187,9 +224,16 @@ public sealed class Engine
         };
     }
 
-    /// <summary>What the app suggests: every default-on guard that applies here and is not already closed.</summary>
+    /// <summary>What the app suggests on the security list: every default-on guard that applies and is still open.</summary>
     public IReadOnlyList<Guard> Suggested(Standing standing)
         => standing.Guards
+            .Where(g => g.Guard.DefaultOn && g.NeedsDoing && Applies(g.Guard, standing.Windows))
+            .Select(g => g.Guard)
+            .ToList();
+
+    /// <summary>The same question of the advertising, AI and telemetry list.</summary>
+    public IReadOnlyList<Guard> SuggestedJunk(Standing standing)
+        => standing.Junk
             .Where(g => g.Guard.DefaultOn && g.NeedsDoing && Applies(g.Guard, standing.Windows))
             .Select(g => g.Guard)
             .ToList();

@@ -28,97 +28,86 @@ public static class Guards
             "The 1990s version of Windows file sharing. Still switched on for compatibility with equipment nobody has any more.",
             "Closes the hole WannaCry and NotPetya went through. Both spread over SMBv1 on machines that were behind on patches, which is what this PC now permanently is.",
             "Windows XP machines and printers or scanners from before about 2010 will not see this PC's shared folders.",
-            Cost.Small,
             new[] { ServiceOff("mrxsmb10"), Machine($@"{Services}\LanmanServer\Parameters", "SMB1", 0) },
-            DefaultOn: true, NeedsRestart: true),
+            DefaultOn: true, NeedsRestart: true, Cost: Cost.Small),
 
         new("llmnr", "Ways in", "Name lookups shouted across the network (LLMNR)",
             "When a name will not resolve, Windows shouts it to the whole local network and trusts whoever answers first.",
             "Stops the standard trick for collecting password hashes on a shared network: answer the shout, receive the credentials.",
             "Nothing on a home network. On a small office network without a proper DNS server, machines may be harder to find by name.",
-            Cost.Small,
             new[] { Machine($@"{Policies}\Windows NT\DNSClient", "EnableMulticast", 0) },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.Small),
 
         new("netbios", "Ways in", "The other shouted name lookup (NetBIOS over TCP/IP)",
             "Older than LLMNR and answers the same way, per network adapter.",
             "Closes the second half of the same trick. Turning off LLMNR alone leaves this one listening.",
             "Same as above, plus any program still finding PCs by their old-style network name.",
-            Cost.Small,
             Array.Empty<RegEdit>(),  // filled in per adapter at scan time; see Engine.Expand
-            DefaultOn: true, OnlyIf: "netbios"),
+            DefaultOn: true, OnlyIf: "netbios", Cost: Cost.Small),
 
         new("webdav", "Ways in", "Files over the web (the WebClient service)",
             "Lets Windows open a web address as if it were a folder. Almost nobody uses it; phishing attachments do.",
             "Stops a class of attachment that reaches out to a server on the internet and runs what it finds.",
             "If you map a drive to SharePoint or a web host with a \\\\server\\ address, that stops working.",
-            Cost.Small,
             new[] { ServiceOff("WebClient") },
-            DefaultOn: true, NeedsRestart: true),
+            DefaultOn: true, NeedsRestart: true, Cost: Cost.Small),
 
         new("rdp", "Ways in", "Remote Desktop",
             "Lets somebody sign in to this PC over the network and use it as if they were sitting at it.",
             "Remote Desktop left on is how a great many PCs are taken over. On an unpatched OS it is the single biggest door.",
             "You cannot connect to this PC from another one. Connecting out from this PC to others still works.",
-            Cost.Real,
             new[] { Machine(@"SYSTEM\CurrentControlSet\Control\Terminal Server", "fDenyTSConnections", 1) },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.Real),
 
         new("assist", "Ways in", "Remote Assistance invitations",
             "The older \"let me help you\" feature, separate from Remote Desktop and separate from Quick Assist.",
             "Removes a second remote path that almost nobody uses and that is rarely noticed when it is abused.",
             "Nobody can accept a Remote Assistance invitation from this PC.",
-            Cost.None,
             new[] { Machine(@"SYSTEM\CurrentControlSet\Control\Remote Assistance", "fAllowToGetHelp", 0) },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.None),
 
         new("spooler", "Ways in", "The print spooler, on a PC with no printer",
             "The service that queues printing. It has had a long run of serious holes, PrintNightmare among them.",
             "Removes a service that runs as the system account, accepts work from the network, and that this PC does not appear to need.",
             "You cannot print or add a printer until it is turned back on. The app only suggests this when it finds no real printer set up.",
-            Cost.Real,
             new[] { ServiceOff("Spooler") },
-            DefaultOn: true, NeedsRestart: true, OnlyIf: "noprinter"),
+            DefaultOn: true, NeedsRestart: true, OnlyIf: "noprinter", Cost: Cost.Real),
 
         // ---------- what is allowed to run ----------
         new("wsh", "What can run", "Scripts that run by double-click (Windows Script Host)",
             "The part of Windows that runs .vbs and .js files when you open them.",
             "Stops the oldest still-working email attachment in the world: a script file that runs the moment it is opened.",
             "Any .vbs or .js file you rely on stops running, including some old installers and login scripts.",
-            Cost.Small,
             new[] { Machine(@"SOFTWARE\Microsoft\Windows Script Host\Settings", "Enabled", 0) },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.Small),
 
         new("macros", "What can run", "Office macros in files from the internet",
             "A Word or Excel file that arrived by email or download, carrying code.",
             "Blocks the single most common way a document turns into a break-in. Files you made yourself are unaffected.",
             "A macro workbook a colleague emails you will not run until you save it and unblock it in its properties.",
-            Cost.Small,
             new[]
             {
                 User(@"SOFTWARE\Policies\Microsoft\office\16.0\word\security", "blockcontentexecutionfrominternet", 1),
                 User(@"SOFTWARE\Policies\Microsoft\office\16.0\excel\security", "blockcontentexecutionfrominternet", 1),
                 User(@"SOFTWARE\Policies\Microsoft\office\16.0\powerpoint\security", "blockcontentexecutionfrominternet", 1),
             },
-            DefaultOn: true, OnlyIf: "office"),
+            DefaultOn: true, OnlyIf: "office", Cost: Cost.Small),
 
         new("autorun", "What can run", "Anything that starts itself from a USB stick",
             "AutoRun and AutoPlay: Windows looking at what you plugged in and starting something from it.",
             "A USB stick left in a car park is still a way into an office. This makes plugging one in do nothing on its own.",
             "You open the drive yourself in File Explorer instead of a window appearing. That is the whole difference.",
-            Cost.None,
             new[]
             {
                 Machine(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "NoDriveTypeAutoRun", 255),
                 Machine(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "NoAutorun", 1),
             },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.None),
 
         new("asr", "What can run", "Defender's attack surface rules",
             "Eight rules in Microsoft Defender that block particular moves rather than particular files: Office starting a program, a script starting a download, a program reading passwords out of memory.",
             "These are the closest thing to a patch for an unpatched PC. They stop the step in the middle of an attack rather than trying to recognise the file at the start of it.",
             "A few unusual installers and macro-heavy workbooks will be blocked. Defender shows what it stopped, and a rule can be turned back off here.",
-            Cost.Small,
             new[]
             {
                 Machine(Asr, "ExploitGuard_ASR_Rules", 1),
@@ -139,57 +128,56 @@ public static class Guards
                 // Untrusted and unsigned processes that run from USB
                 new RegEdit(Hive.LocalMachine, Asr + @"\Rules", "B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4", RegValue.Str("1")),
             },
-            DefaultOn: true, OnlyIf: "defender"),
+            DefaultOn: true, OnlyIf: "defender", Cost: Cost.Small),
 
         // ---------- what is watching ----------
         new("smartscreen", "What is watching", "SmartScreen set to block, not warn",
             "The check Windows runs on a program the first time you open it.",
             "On a PC that will not be patched again, the warning that can be clicked through is worth less than the one that cannot.",
             "A program Microsoft has not seen before needs an extra step to run. You can still run it.",
-            Cost.Small,
             new[]
             {
                 Machine($@"{Policies}\Windows\System", "EnableSmartScreen", 1),
                 new RegEdit(Hive.LocalMachine, $@"{Policies}\Windows\System", "ShellSmartScreenLevel", RegValue.Str("Block")),
             },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.Small),
 
         new("cloud", "What is watching", "Defender's cloud checks",
             "Defender asking Microsoft about a file it has not seen before, and sending a copy when it is suspicious.",
             "Definitions keep coming to this PC until October 2028, and the cloud check is the part of Defender that knows about something released this morning.",
             "Suspicious files are uploaded to Microsoft. That is a real privacy cost and the reason this is not switched on quietly for you.",
-            Cost.Real,
             new[]
             {
                 Machine($@"{Policies}\Windows Defender\Spynet", "SpynetReporting", 2),
                 Machine($@"{Policies}\Windows Defender\Spynet", "SubmitSamplesConsent", 1),
             },
-            DefaultOn: false, OnlyIf: "defender"),
+            DefaultOn: false, OnlyIf: "defender", Cost: Cost.Real),
 
         new("lsa", "What is watching", "Password memory locked down (LSA protection)",
             "Makes the part of Windows holding your signed-in credentials refuse to be read by other programs.",
             "Stops the standard tool for lifting passwords out of a running PC from working at all.",
             "An old fingerprint reader, smartcard driver or password manager plug-in can stop working. It needs a restart, and this is the one here most likely to need undoing.",
-            Cost.Real,
             new[] { Machine(@"SYSTEM\CurrentControlSet\Control\Lsa", "RunAsPPL", 1) },
-            DefaultOn: false, NeedsRestart: true),
+            DefaultOn: false, NeedsRestart: true, Cost: Cost.Real),
 
         // ---------- the updates themselves ----------
         new("paused", "Updates", "Updates not paused",
             "Windows Update can be paused for up to 35 days, and a paused PC stays paused quietly.",
             "If you are paying for or enrolled in Extended Security Updates, a pause is the one thing that stops them arriving.",
             "Nothing. Updates resume.",
-            Cost.None,
             new[]
             {
                 new RegEdit(Hive.LocalMachine, @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings", "PauseUpdatesExpiryTime", RegValue.Absent),
                 new RegEdit(Hive.LocalMachine, @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings", "PauseFeatureUpdatesStartTime", RegValue.Absent),
                 new RegEdit(Hive.LocalMachine, @"SOFTWARE\Microsoft\WindowsUpdate\UX\Settings", "PauseQualityUpdatesStartTime", RegValue.Absent),
             },
-            DefaultOn: true),
+            DefaultOn: true, Cost: Cost.None),
     };
 
-    public static Guard? Find(string id) => All.FirstOrDefault(g => g.Id == id);
+    /// <summary>Any switch this app knows, from either list, so one command can name any of them.</summary>
+    public static Guard? Find(string id)
+        => All.FirstOrDefault(g => string.Equals(g.Id, id, StringComparison.OrdinalIgnoreCase))
+        ?? Junk.Find(id);
 
     /// <summary>
     /// The things worth doing that this app will not do for you, with what to type. They need a feature turned

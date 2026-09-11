@@ -110,6 +110,41 @@
             </Border>
         </DataTemplate>
 
+        <DataTemplate x:Key="StartupTemplate" DataType="{x:Type local:StartupRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" IsChecked="{Binding Selected}" IsEnabled="{Binding CanSelect}"
+                              VerticalAlignment="Top" Margin="0,4,12,0"/>
+                    <StackPanel Grid.Column="1">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource H2}"/>
+                            <Border Style="{StaticResource Pill}" Background="{Binding StateKey, Converter={StaticResource StateBg}}">
+                                <TextBlock Text="{Binding StateWord}" FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{Binding StateKey, Converter={StaticResource StateInk}}"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Command}" Style="{StaticResource Mono}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SpaceTemplate" DataType="{x:Type local:SpaceRow}">
+            <Border Style="{StaticResource CardStyle}" Padding="16,10">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{Binding Size}" Style="{StaticResource H2}" Margin="0,0,10,0"/>
+                        <TextBlock Text="{Binding What}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding How}" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource Muted}"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="ByHandTemplate">
             <Border Style="{StaticResource CardStyle}" Padding="16,10">
                 <StackPanel>
@@ -143,6 +178,8 @@
                     <ListBoxItem Content="Still being patched" Padding="12,9"/>
                     <ListBoxItem Content="Windows 11" Padding="12,9"/>
                     <ListBoxItem Content="What to shut" Padding="12,9"/>
+                    <ListBoxItem Content="Make it faster" Padding="12,9"/>
+                    <ListBoxItem Content="Turn off the junk" Padding="12,9"/>
                     <ListBoxItem Content="Receipts" Padding="12,9"/>
                 </ListBox>
             </DockPanel>
@@ -230,6 +267,44 @@
                         <TextBlock Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,14"
                                    Text="These need a Windows feature turned off or a change this app could not undo for you, so it tells you instead of doing it."/>
                         <ItemsControl ItemsSource="{Binding ByHand}" ItemTemplate="{StaticResource ByHandTemplate}"/>
+                    </StackPanel>
+
+                    <!-- make it faster -->
+                    <StackPanel x:Name="SpeedPane" Visibility="Collapsed">
+                        <TextBlock Text="Make it faster" Style="{StaticResource H1}"/>
+                        <TextBlock Text="{Binding BootLine}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <TextBlock Text="{Binding DiskLine}" Style="{StaticResource Small}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+
+                        <Border Style="{StaticResource CardStyle}" Margin="0,14,0,0">
+                            <TextBlock Text="{Binding Truth}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <TextBlock Text="Starts with this PC" Style="{StaticResource H1}" FontSize="21" Margin="0,20,0,0"/>
+                        <TextBlock Text="{Binding StartupSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,4"/>
+                        <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,0,0,12"
+                                   Text="The times are Windows&apos; own measurements, from the log it keeps and almost nobody reads. Stopping one does not remove the program; it opens normally when you open it."/>
+                        <ItemsControl ItemsSource="{Binding Startup}" ItemTemplate="{StaticResource StartupTemplate}"/>
+
+                        <TextBlock Text="Worth changing" Style="{StaticResource H1}" FontSize="21" Margin="0,22,0,0"/>
+                        <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,12"
+                                   Text="A short list on purpose. Most of what circulates as Windows tuning is folklore; everything here either stops work happening or stops something being drawn."/>
+                        <ItemsControl ItemsSource="{Binding Speeds}" ItemTemplate="{StaticResource GuardTemplate}"/>
+
+                        <StackPanel Visibility="{Binding HasSpace, Converter={StaticResource Vis}}">
+                            <TextBlock Text="Space that could come back" Style="{StaticResource H1}" FontSize="21" Margin="0,22,0,0"/>
+                            <TextBlock Text="{Binding SpaceSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,12"/>
+                            <ItemsControl ItemsSource="{Binding Space}" ItemTemplate="{StaticResource SpaceTemplate}"/>
+                            <Button Content="Open Windows&apos; own cleanup" HorizontalAlignment="Left" Margin="0,10,0,0" Click="OpenCleanup"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- turn off the junk -->
+                    <StackPanel x:Name="JunkPane" Visibility="Collapsed">
+                        <TextBlock Text="Turn off the junk" Style="{StaticResource H1}"/>
+                        <TextBlock Text="{Binding JunkSummary}" Style="{StaticResource Lead}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        <TextBlock Style="{StaticResource Small}" TextWrapping="Wrap" Margin="0,6,0,14"
+                                   Text="The advertising, the AI hooks, the telemetry and the noise. Every one is a registry value with a receipt: nothing is removed and nothing here cannot be put back."/>
+                        <ItemsControl ItemsSource="{Binding Junk}" ItemTemplate="{StaticResource GuardTemplate}"/>
                     </StackPanel>
 
                     <!-- receipts -->

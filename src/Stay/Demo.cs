@@ -27,14 +27,29 @@ public static class Demo
         pc.Licences_.Add(("Windows(R) Operating System", "Windows 10 Pro", true));
         pc.Programs.Add("Microsoft 365");
 
+        // A slow morning on a tired laptop: a 94 second start, four things holding it up, a disk nearly full.
+        var pace = new FakePerformance
+        {
+            Booted = new Boot(new DateTimeOffset(2026, 9, 10, 8, 41, 0, TimeSpan.Zero), 94_000),
+            TheDisk = new SystemDisk(DiskKind.Spinning, 19L << 30, 238L << 30),
+        };
+        pace.Starters.Add(new StartupEntry("OneDrive", @"C:\Program Files\Microsoft OneDrive\OneDrive.exe /background", StartsIn.UserRun, true, 4_200));
+        pace.Starters.Add(new StartupEntry("Adobe Updater", @"C:\Program Files (x86)\Common Files\Adobe\AdobeGCClient\AGCInvokerUtility.exe", StartsIn.MachineRun, true, 3_100));
+        pace.Starters.Add(new StartupEntry("Spotify", @"C:\Users\sam\AppData\Roaming\Spotify\Spotify.exe --autostart", StartsIn.UserRun, true, 2_600));
+        pace.Starters.Add(new StartupEntry("Teams", @"C:\Users\sam\AppData\Local\Microsoft\Teams\Update.exe --processStart", StartsIn.UserRun, true, 2_400));
+        pace.Starters.Add(new StartupEntry("SecurityHealthSystray", @"C:\Windows\system32\SecurityHealthSystray.exe", StartsIn.MachineRun, true));
+        pace.Starters.Add(new StartupEntry("Steam", @"C:\Program Files (x86)\Steam\steam.exe -silent", StartsIn.UserRun, false));
+        pace.Reclaimables.Add(new Reclaimable("Windows Update's downloaded installers", 6L << 30, "Disk Cleanup, ticking \"Windows Update Cleanup\". Windows downloads them again if it needs them."));
+        pace.Reclaimables.Add(new Reclaimable("Temporary files your programs made", 2L << 30, "Storage settings, under Temporary files."));
+
         var store = new MemoryReceiptStore();
-        var engine = new Core.Engine(registry, pc, store, Cli.Version, "SAMS-LAPTOP", "sam")
+        var engine = new Core.Engine(registry, pc, pace, store, Cli.Version, "SAMS-LAPTOP", "sam")
         {
             Now = () => new DateTimeOffset(2026, 9, 10, 9, 14, 0, TimeSpan.Zero),
         };
 
         // One receipt from last week, so the Receipts pane shows what one looks like rather than an empty page.
-        var earlier = new Core.Engine(registry, pc, store, Cli.Version, "SAMS-LAPTOP", "sam")
+        var earlier = new Core.Engine(registry, pc, pace, store, Cli.Version, "SAMS-LAPTOP", "sam")
         {
             Now = () => new DateTimeOffset(2026, 9, 3, 16, 20, 0, TimeSpan.Zero),
         };

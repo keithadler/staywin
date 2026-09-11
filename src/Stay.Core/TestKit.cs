@@ -33,6 +33,7 @@ public static class SelfTest
         Tests.StandingSuite.Run,
         Tests.ElevenSuite.Run,
         Tests.GuardsSuite.Run,
+        Tests.SpeedSuite.Run,
         Tests.EngineSuite.Run,
         Tests.ReceiptSuite.Run,
     };

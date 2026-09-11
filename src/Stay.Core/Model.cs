@@ -6,21 +6,28 @@ namespace Stay.Core;
 // and a person who has used one already knows what a change here looks like.
 
 /// <summary>Which part of the registry an edit lives in.</summary>
-public enum Hive { CurrentUser, LocalMachine }
+public enum Hive { CurrentUser, LocalMachine, NetworkService }
 
 /// <summary>A registry value as the engine sees it. Absent means "no such value".</summary>
-public enum ValueKind { Absent, DWord, String }
+///
+/// Binary is here for one reason: the way Windows records which startup programs are switched off is a twelve
+/// byte value under StartupApproved, and putting one back exactly is the whole promise of a receipt. It is held
+/// as hexadecimal text so that a receipt written to JSON reads back as the same value it was.
+public enum ValueKind { Absent, DWord, String, Binary }
 
 public sealed record RegValue(ValueKind Kind, long Number = 0, string Text = "")
 {
     public static readonly RegValue Absent = new(ValueKind.Absent);
     public static RegValue DWord(long n) => new(ValueKind.DWord, n);
     public static RegValue Str(string s) => new(ValueKind.String, 0, s);
+    public static RegValue Bytes(byte[] b) => new(ValueKind.Binary, 0, Convert.ToHexString(b));
+    public byte[] AsBytes() => Kind == ValueKind.Binary ? Convert.FromHexString(Text) : Array.Empty<byte>();
 
     public override string ToString() => Kind switch
     {
         ValueKind.Absent => "(absent)",
         ValueKind.DWord => Number.ToString(),
+        ValueKind.Binary => Text.Length == 0 ? "(empty)" : Text,
         _ => $"\"{Text}\"",
     };
 }
@@ -29,7 +36,12 @@ public sealed record RegValue(ValueKind Kind, long Number = 0, string Text = "")
 public sealed record RegEdit(Hive Hive, string Key, string Name, RegValue Wanted)
 {
     public string Path => $"{HiveName(Hive)}\\{Key}";
-    public static string HiveName(Hive h) => h == Hive.CurrentUser ? "HKCU" : "HKLM";
+    public static string HiveName(Hive h) => h switch
+    {
+        Hive.CurrentUser => "HKCU",
+        Hive.LocalMachine => "HKLM",
+        _ => "HKU\\S-1-5-20",
+    };
 }
 
 // ---------- where this PC stands ----------
@@ -122,10 +134,11 @@ public sealed record Guard(
     string What,     // what the thing is
     string Does,     // what turning it off does for you
     string Costs,    // what you lose
-    Cost Cost,
     IReadOnlyList<RegEdit> Edits,
     bool DefaultOn,
+    bool NeedsSignOut = false,
     bool NeedsRestart = false,
+    Cost Cost = Cost.Small,
     string? OnlyIf = null); // a condition the engine checks before suggesting it
 
 public enum GuardState { Closed, Open, Partly }
@@ -142,10 +155,12 @@ public sealed record Standing(
     IReadOnlyList<Component> Components,
     Eleven Eleven,
     IReadOnlyList<GuardStatus> Guards,
+    IReadOnlyList<GuardStatus> Junk,
     DateOnly Today)
 {
     public int Open => Guards.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
     public int Closed => Guards.Count(g => !g.NeedsDoing);
+    public int Loud => Junk.Count(g => g.NeedsDoing && g.Guard.DefaultOn);
 
     /// <summary>The one sentence at the top of the window: is this PC being patched at all?</summary>
     public bool Patched => Windows.IsWindows11

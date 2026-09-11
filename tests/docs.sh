@@ -22,6 +22,19 @@ guards=$(grep -cE '^        new\("' "$G")
 [ "$guards" = 15 ]; say $? "the catalogue holds 15 guards (found $guards)"
 grep -q "Fifteen things worth closing" README.md; say $? "and the README says fifteen"
 
+speeds=$(grep -cE '^        new\("speed\.' src/Stay.Core/Speed.cs)
+[ "$speeds" = 5 ]; say $? "there are 5 speed switches (found $speeds)"
+grep -q "the five changes that actually help" README.md; say $? "and the README says five"
+
+junk=$(grep -cE '^        new\("' src/Stay.Core/Junk.cs)
+[ "$junk" = 34 ]; say $? "the junk list holds 34 switches (found $junk)"
+grep -q "34 advertising" README.md; say $? "and the README says 34"
+
+grep -q "does not make Windows 10 fast" README.md
+say $? "the README says out loud that it is not a speed cure"
+grep -q "would do more for it than everything below" src/Stay.Core/Speed.cs
+say $? "and the app itself says an SSD beats everything it can do"
+
 byhand=$(sed -n '/ByHand = new/,/};/p' "$G" | grep -c '^        ("')
 [ "$byhand" = 4 ]; say $? "there are 4 things it leaves to you (found $byhand)"
 grep -q "Four more worth doing" CHANGELOG.md; say $? "and the changelog says four"

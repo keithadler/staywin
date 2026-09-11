@@ -24,7 +24,7 @@ public static class Cli
         finally { Console.Out.WriteLine(); }
     }
 
-    public static Engine MakeEngine() => new(new WinRegistry(), new WinMachine(), new FileReceiptStore(),
+    public static Engine MakeEngine() => new(new WinRegistry(), new WinMachine(), new WinPerformance(), new FileReceiptStore(),
                                              Version, Environment.MachineName, Environment.UserName);
 
     private static bool Flag(string[] args, string name) => args.Any(a => string.Equals(a, name, StringComparison.OrdinalIgnoreCase));
@@ -56,6 +56,8 @@ public static class Cli
             case "updates": return Updates(o, json);
             case "eleven": case "11": return Eleven(o, json);
             case "guards": case "open": return GuardList(o, json);
+            case "speed": return SpeedPane(args, o, json);
+            case "junk": return JunkPane(args, o, json);
             case "harden": return Harden(args, o, json);
             case "receipts": return Receipts(o, json);
             case "undo": return Undo(args, o);
@@ -263,6 +265,153 @@ public static class Cli
         return receipt.Failed > 0 ? 2 : 0;
     }
 
+    // ---------- what is making it slow ----------
+
+    private static int SpeedPane(string[] args, TextWriter o, bool json)
+    {
+        var engine = MakeEngine();
+        var pace = engine.Pace();
+
+        if (Value(args, "--stop") is { } names)
+        {
+            var stopping = new List<Guard>();
+            foreach (var name in names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var entry = pace.Startup.FirstOrDefault(e => string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (entry is null) { o.WriteLine($"stay: nothing called \"{name}\" starts with this PC. Run: stay speed"); return 64; }
+                stopping.Add(engine.Stop(entry));
+            }
+            return Do(engine, engine.PlanFor(stopping), args, o, json);
+        }
+
+        if (Flag(args, "--all"))
+            return Do(engine, engine.PlanFor(engine.SuggestedPace(pace)), args, o, json);
+
+        if (json)
+        {
+            Json(o, new
+            {
+                boot = pace.LastBoot is null ? null : new { pace.LastBoot.When, pace.LastBoot.Seconds },
+                disk = new { kind = pace.Disk.Kind.ToString(), pace.Disk.FreeGb, pace.Disk.TotalGb, pace.Disk.Cramped },
+                memoryGb = pace.MemoryGb,
+                truth = pace.Truth,
+                startup = pace.Startup.Select(e => new { e.Name, e.Enabled, e.Milliseconds, where = e.Where.ToString() }),
+                switches = pace.Switches.Select(g => new { g.Guard.Id, g.Guard.Title, state = g.State.ToString() }),
+                space = pace.Space,
+            });
+            return 0;
+        }
+
+        if (pace.LastBoot is { } boot)
+            o.WriteLine($"This PC last took {boot.Seconds:0} seconds to start, on {boot.When:d MMMM} at {boot.When:HH:mm}.");
+        else
+            o.WriteLine("Windows has not recorded how long this PC takes to start.");
+
+        o.WriteLine($"Disk: {Kind(pace.Disk.Kind)}, {pace.Disk.FreeGb:0} GB free of {pace.Disk.TotalGb:0}."
+                    + $"  Memory: {pace.MemoryGb:0.#} GB.");
+        o.WriteLine();
+        o.WriteLine(pace.Truth);
+
+        o.WriteLine();
+        o.WriteLine($"STARTS WITH THIS PC ({pace.Running.Count} of {pace.Startup.Count} switched on"
+                    + (pace.SecondsAtStartup > 0 ? $", {pace.SecondsAtStartup:0.0} seconds of it measured" : "") + ")");
+        foreach (var entry in pace.Startup)
+            o.WriteLine($"  {(entry.Enabled ? "on " : "off")}  {entry.Name,-28} {entry.Cost}");
+        if (pace.Running.Count > 0) o.WriteLine("  Stop one with: stay speed --stop OneDrive");
+
+        o.WriteLine();
+        o.WriteLine("WORTH CHANGING");
+        foreach (var status in pace.Switches.Where(g => engine.AppliesToPace(g.Guard, pace.Disk)))
+        {
+            o.WriteLine($"  {(status.NeedsDoing ? "not done" : "done    ")}  {status.Guard.Id,-20} {status.Guard.Title}");
+            if (status.NeedsDoing) o.WriteLine($"                        costs you: {status.Guard.Costs}");
+        }
+
+        if (pace.Space.Count > 0)
+        {
+            o.WriteLine();
+            o.WriteLine($"SPACE THAT COULD COME BACK ({pace.Reclaimable / 1024.0 / 1024 / 1024:0.#} GB)");
+            foreach (var item in pace.Space)
+            {
+                o.WriteLine($"  {item.Gb,6:0.#} GB  {item.What}");
+                o.WriteLine($"            {item.How}");
+            }
+            o.WriteLine("  This app does not delete files. Deleting cannot be undone by a receipt, so it tells you instead.");
+        }
+
+        o.WriteLine();
+        o.WriteLine("Do everything suggested above: stay speed --all");
+        return pace.Switches.Any(g => g.NeedsDoing && g.Guard.DefaultOn && engine.AppliesToPace(g.Guard, pace.Disk)) ? 1 : 0;
+    }
+
+    private static string Kind(DiskKind kind) => kind switch
+    {
+        DiskKind.Spinning => "a spinning hard disk",
+        DiskKind.Solid => "solid state",
+        _ => "kind unknown",
+    };
+
+    // ---------- the advertising, the AI and the telemetry ----------
+
+    private static int JunkPane(string[] args, TextWriter o, bool json)
+    {
+        var engine = MakeEngine();
+        var standing = engine.Scan();
+
+        if (Flag(args, "--all"))
+            return Do(engine, engine.PlanFor(engine.SuggestedJunk(standing)), args, o, json);
+
+        if (json)
+        {
+            Json(o, standing.Junk.Select(g => new { g.Guard.Id, g.Guard.Group, g.Guard.Title, state = g.State.ToString() }));
+            return standing.Loud > 0 ? 1 : 0;
+        }
+
+        foreach (var group in standing.Junk.GroupBy(g => g.Guard.Group))
+        {
+            o.WriteLine(group.Key.ToUpperInvariant());
+            foreach (var status in group)
+                o.WriteLine($"  {(status.NeedsDoing ? "ON  " : "off ")} {status.Guard.Id,-24} {status.Guard.Title}");
+            o.WriteLine();
+        }
+        o.WriteLine($"{standing.Loud} still on. Turn them all off: stay junk --all");
+        return standing.Loud > 0 ? 1 : 0;
+    }
+
+    /// <summary>The one path that changes anything: dry run, restore point, apply, receipt. Every verb goes through it.</summary>
+    private static int Do(Engine engine, Plan plan, string[] args, TextWriter o, bool json)
+    {
+        if (plan.IsEmpty) { o.WriteLine("Nothing to change: all of that is already done."); return 0; }
+
+        if (Flag(args, "--dry-run"))
+        {
+            if (json) { Json(o, plan.Registry.Select(c => new { c.GuardId, c.Path, before = c.Before.ToString(), after = c.After.ToString() })); return 0; }
+            o.WriteLine($"Would change {plan.Registry.Count} value(s) and write a receipt:");
+            foreach (var change in plan.Registry) o.WriteLine($"  {change.Path}: {change.Before} -> {change.After}");
+            if (plan.NeedsRestart) o.WriteLine("Some of it takes effect after a restart.");
+            return 0;
+        }
+
+        bool made = false;
+        if (Flag(args, "--restore-point"))
+        {
+            var (ok, reason) = RestorePoint.Create();
+            made = ok;
+            if (!ok) o.WriteLine($"No restore point: {reason}. The receipt still records every change.");
+        }
+
+        var receipt = engine.Apply(plan, made);
+        if (json) { Json(o, new { receipt.Id, receipt.Changed, receipt.Failed, restorePoint = made }); return receipt.Failed > 0 ? 2 : 0; }
+
+        o.WriteLine($"Changed {receipt.Changed} value(s). Receipt {receipt.Id}.");
+        foreach (var failed in receipt.Registry.Where(c => c.Failed)) o.WriteLine($"  failed: {failed.Path}: {failed.Error}");
+        if (receipt.Failed > 0) o.WriteLine("Some changes need an administrator. Run this from an elevated prompt.");
+        if (plan.NeedsRestart) o.WriteLine("Some of it takes effect after a restart.");
+        if (plan.Guards.Any(g => g.NeedsSignOut)) o.WriteLine("Some of it takes effect after you sign out and back in.");
+        o.WriteLine($"Put it all back with: stay undo {receipt.Id}");
+        return receipt.Failed > 0 ? 2 : 0;
+    }
+
     // ---------- receipts ----------
 
     private static int Receipts(TextWriter o, bool json)
@@ -339,6 +488,11 @@ public static class Cli
         stay updates                 everything here that still gets security updates, and the date each stops
         stay eleven                  whether this PC could take Windows 11, and which check fails
         stay guards                  what is open that this app can shut
+        stay speed                   what is making this PC slow, and what to do about it
+        stay speed --all             do everything it suggests for speed, with a receipt
+        stay speed --stop OneDrive   stop one program starting with the PC
+        stay junk                    the advertising, AI hooks and telemetry that are still on
+        stay junk --all              turn all of it off, with a receipt
         stay harden --all            shut everything it suggests, with a receipt
         stay harden --id rdp,smb1    shut named ones
         stay harden --all --dry-run  show the exact changes and make none

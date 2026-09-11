@@ -6,11 +6,17 @@ namespace Stay;
 /// <summary>The real registry. Only the values the catalogue names are ever read or written.</summary>
 public sealed class WinRegistry : IRegistry
 {
-    private static RegistryKey Root(Hive hive) => hive == Hive.LocalMachine ? Registry.LocalMachine : Registry.CurrentUser;
+    private static (RegistryKey Root, string Key) Resolve(Hive hive, string key) => hive switch
+    {
+        Hive.LocalMachine => (Registry.LocalMachine, key),
+        Hive.NetworkService => (Registry.Users, @"S-1-5-20\" + key),
+        _ => (Registry.CurrentUser, key),
+    };
 
     public RegValue Read(Hive hive, string key, string name)
     {
-        using var k = Root(hive).OpenSubKey(key, writable: false);
+        var (root, path) = Resolve(hive, key);
+        using var k = root.OpenSubKey(path, writable: false);
         if (k is null) return RegValue.Absent;
         var v = k.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
         return v switch
@@ -19,6 +25,7 @@ public sealed class WinRegistry : IRegistry
             int i => RegValue.DWord(unchecked((uint)i)),
             long l => RegValue.DWord(l),
             string s => RegValue.Str(s),
+            byte[] b => RegValue.Bytes(b),
             _ => RegValue.Str(v.ToString() ?? ""),
         };
     }
@@ -27,13 +34,16 @@ public sealed class WinRegistry : IRegistry
     {
         if (value.Kind == ValueKind.Absent)
         {
-            using var existing = Root(hive).OpenSubKey(key, writable: true);
+            var (deleteRoot, deletePath) = Resolve(hive, key);
+            using var existing = deleteRoot.OpenSubKey(deletePath, writable: true);
             existing?.DeleteValue(name, throwOnMissingValue: false);
             return;
         }
-        using var k = Root(hive).CreateSubKey(key, writable: true)
+        var (root, path) = Resolve(hive, key);
+        using var k = root.CreateSubKey(path, writable: true)
             ?? throw new InvalidOperationException($"cannot open {RegEdit.HiveName(hive)}\\{key}");
         if (value.Kind == ValueKind.DWord) k.SetValue(name, unchecked((int)(uint)value.Number), RegistryValueKind.DWord);
+        else if (value.Kind == ValueKind.Binary) k.SetValue(name, value.AsBytes(), RegistryValueKind.Binary);
         else k.SetValue(name, value.Text, RegistryValueKind.String);
     }
 
@@ -41,7 +51,8 @@ public sealed class WinRegistry : IRegistry
     {
         try
         {
-            using var k = Root(hive).OpenSubKey(key, writable: false);
+            var (root, path) = Resolve(hive, key);
+            using var k = root.OpenSubKey(path, writable: false);
             return k?.GetSubKeyNames() ?? Array.Empty<string>();
         }
         catch { return Array.Empty<string>(); }

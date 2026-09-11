@@ -15,4 +15,9 @@ First version.
   does and what you lose, and every change recorded in a receipt that puts it back exactly.
 - Four more worth doing that the app will not do for you, with what to type, because a change it could not undo
   is not one it should make.
+- Make it faster: how long this PC really took to start and what each startup program cost, read from Windows'
+  own performance log; five switches that genuinely help an old machine; and what is holding disk space, without
+  deleting anything, because deleting is the one thing a receipt cannot undo.
+- Turn off the junk: the 34 advertising, AI, telemetry and noise switches from Quiet for Windows, brought here
+  whole so an old PC needs one app rather than two.
 - A console twin with `--json` on everything, for scripts and for a fleet.

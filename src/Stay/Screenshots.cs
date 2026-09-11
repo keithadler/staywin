@@ -23,7 +23,7 @@ public static class Screenshots
         };
         window.Show();
 
-        var panes = new[] { "stand", "patched", "eleven", "shut", "receipts" };
+        var panes = new[] { "stand", "patched", "eleven", "shut", "speed", "junk", "receipts" };
         for (int i = 0; i < panes.Length; i++)
         {
             window.ShowPaneForShot(i);

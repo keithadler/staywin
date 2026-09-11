@@ -1,7 +1,8 @@
 # Stay for Windows 10
 
-Where this PC stands now that Windows 10 is not supported, what on it is still being patched, and the doors worth
-shutting on a machine nobody is fixing any more.
+Everything an old Windows 10 PC needs in one app: where it stands now that Windows 10 is not supported, what is
+making it slow, the advertising and telemetry still switched on, and the doors worth shutting on a machine nobody
+is fixing any more. Every change it makes is written to a receipt first, and one button puts any of it back.
 
 ## Download
 
@@ -56,6 +57,23 @@ Defender's attack-surface rules, SmartScreen set to block rather than warn. Each
 shutting it does, and what you lose — and every change is written to a receipt first, holding what each value was
 before, so one button puts it all back.
 
+**Make it faster.** Windows times its own start and writes it down, and almost nobody knows the log is there.
+Stay reads it: *this PC last took 94 seconds to start*, and *OneDrive cost 4.2 seconds of it*. Real measurements,
+not guesses. Then the five changes that actually help an old machine — animations off, transparency off, the
+search index on a spinning disk, SysMain on a solid one, Storage Sense so the disk stops filling — and a list of
+what is eating the disk. It will not delete files: deleting cannot be undone by a receipt, so it tells you where
+the space is and opens Windows' own cleanup.
+
+It also says the thing a tuning app is not supposed to say. If the PC has a spinning hard disk, that is the
+problem, an SSD would do more than everything the app can do put together, and the app says so at the top of the
+page before offering you a single switch.
+
+**Turn off the junk.** The 34 advertising, AI, telemetry and noise switches from
+[Quiet for Windows](https://github.com/keithadler/quietwin), brought here whole — suggestions in Start, promotions
+in Settings, Copilot, Recall, Click to Do, diagnostic data, activity history, the widgets, Game Bar recording,
+Edge running when it is closed. Somebody on an old PC should not have to find a second app to turn off a Start
+menu advert.
+
 **Receipts.** Every change this app has ever made on this PC, with the old values, and a button that restores them.
 
 ## What it cannot do
@@ -79,6 +97,11 @@ stay eleven                  whether this PC could take Windows 11, and which ch
 stay guards                  what is open that this app can shut
 stay harden --all            shut everything it suggests, with a receipt
 stay harden --all --dry-run  show the exact changes and make none
+stay speed                   what is making this PC slow, and what to do about it
+stay speed --all             do everything it suggests for speed
+stay speed --stop OneDrive   stop one program starting with the PC
+stay junk                    the advertising, AI hooks and telemetry still on
+stay junk --all              turn all of it off
 stay receipts                every change this app has made on this PC
 stay undo <id>               put a receipt's changes back exactly
 stay report --json           all of it, for a fleet or for your own records
@@ -112,5 +135,11 @@ every write is refused. That is why `Stay.Selftest` runs on any OS.
   says **cannot tell** rather than guessing.
 - Shutting the print spooler, Remote Desktop and LSA protection can get in the way. Each is marked with what it
   costs, and the two most likely to bite are not ticked for you.
+- **It does not make Windows 10 fast.** It stops work happening and stops things being drawn, which on a tired
+  machine is worth real seconds. It is not a substitute for an SSD or for more memory, and it says so first.
+- Startup programs are never ticked for you. Stopping somebody's OneDrive without being asked is not a decision
+  an app gets to make.
+- Windows only records what a startup program costs when it decides that program was slow, so some entries show
+  a measured time and some show none. A blank there means unmeasured, not free.
 
 Free, MIT licensed, built by Keith Adler. More from the same maker: [keithadler.github.io](https://keithadler.github.io).

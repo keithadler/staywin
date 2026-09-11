@@ -37,6 +37,23 @@ public interface IMachine
     bool HasPrinter();
 }
 
+/// <summary>How this PC performs, and what is making it slow. Separate from IMachine because it is a different
+/// question asked of different parts of Windows, and because a PC can answer one and not the other.</summary>
+public interface IPerformance
+{
+    /// <summary>How long Windows took to start, last time, from its own performance log. Null when it has not recorded one.</summary>
+    Boot? LastBoot();
+
+    /// <summary>Everything set to start when you sign in, with what Windows measured it costing where it knows.</summary>
+    IReadOnlyList<StartupEntry> Startup();
+
+    /// <summary>The disk Windows is on: spinning or solid, and how full.</summary>
+    SystemDisk Disk();
+
+    /// <summary>Space being held that could be given back, and what gives it back.</summary>
+    IReadOnlyList<Reclaimable> Space();
+}
+
 /// <summary>Where receipts live.</summary>
 public interface IReceiptStore
 {
@@ -97,6 +114,20 @@ public sealed class FakeMachine : IMachine
     public long SystemDiskBytes() => Disk;
     public bool Installed(string what) => Programs.Contains(what);
     public bool HasPrinter() => Printer;
+}
+
+/// <summary>A made-up PC's performance, so the speed half can be reasoned about without a slow PC to hand.</summary>
+public sealed class FakePerformance : IPerformance
+{
+    public Boot? Booted { get; set; } = new(new DateTimeOffset(2026, 9, 10, 8, 41, 0, TimeSpan.Zero), 94_000);
+    public List<StartupEntry> Starters { get; } = new();
+    public SystemDisk TheDisk { get; set; } = new(DiskKind.Spinning, 18L * 1024 * 1024 * 1024, 238L * 1024 * 1024 * 1024);
+    public List<Reclaimable> Reclaimables { get; } = new();
+
+    public Boot? LastBoot() => Booted;
+    public IReadOnlyList<StartupEntry> Startup() => Starters.ToList();
+    public SystemDisk Disk() => TheDisk;
+    public IReadOnlyList<Reclaimable> Space() => Reclaimables.ToList();
 }
 
 public sealed class MemoryReceiptStore : IReceiptStore
