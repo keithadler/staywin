@@ -1,5 +1,9 @@
 # Stay for Windows 10
 
+[![CI](https://github.com/keithadler/staywin/actions/workflows/ci.yml/badge.svg)](https://github.com/keithadler/staywin/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/keithadler/staywin?sort=semver)](https://github.com/keithadler/staywin/releases/latest)
+[![License](https://img.shields.io/github/license/keithadler/staywin)](https://github.com/keithadler/staywin/blob/main/LICENSE)
+
 Everything an old Windows 10 PC needs in one app: where it stands now that Windows 10 is not supported, what is
 making it slow, the advertising and telemetry still switched on, and the doors worth shutting on a machine nobody
 is fixing any more. Every change it makes is written to a receipt first, and one button puts any of it back.
